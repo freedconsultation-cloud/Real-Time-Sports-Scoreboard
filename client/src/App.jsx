@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
 import { SocketProvider } from './contexts/SocketContext'
+import { FavoritesProvider } from './contexts/FavoritesContext'
 import Nav from './components/Nav'
 import SportTabs from './components/SportTabs'
 import Scoreboard from './components/Scoreboard'
@@ -23,6 +24,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <FavoritesProvider>
       <SocketProvider onKeyEvent={handleKeyEvent}>
         <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
           <Nav />
@@ -42,6 +44,7 @@ export default function App() {
           {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
         </div>
       </SocketProvider>
+      </FavoritesProvider>
     </AuthProvider>
   )
 }

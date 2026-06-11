@@ -1,4 +1,4 @@
-import { useFavorites } from '../hooks/useFavorites'
+import { useFavorites } from '../contexts/FavoritesContext'
 import { useAuth } from '../contexts/AuthContext'
 
 const STATUS_COLORS = { live: 'var(--green)', final: 'var(--muted)', scheduled: 'var(--yellow)' }

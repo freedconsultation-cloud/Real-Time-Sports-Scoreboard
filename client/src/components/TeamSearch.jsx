@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useFavorites } from '../hooks/useFavorites'
+import { useFavorites } from '../contexts/FavoritesContext'
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSocket } from '../contexts/SocketContext'
-import { useFavorites } from '../hooks/useFavorites'
+import { useFavorites } from '../contexts/FavoritesContext'
 import { useAuth } from '../contexts/AuthContext'
 import GameCard from './GameCard'
 import GameModal from './GameModal'
