@@ -3,6 +3,17 @@ import { useAuth } from '../contexts/AuthContext'
 
 const STATUS_COLORS = { live: 'var(--green)', final: 'var(--muted)', scheduled: 'var(--yellow)' }
 
+function formatGameTime(startTime) {
+  const gameDate = new Date(startTime)
+  const now = new Date()
+  const isToday = gameDate.toDateString() === now.toDateString()
+  if (isToday) {
+    return gameDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  }
+  return gameDate.toLocaleDateString([], { month: 'short', day: 'numeric' }) +
+    ' · ' + gameDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
 function TeamRow({ team, isWinner, showLogo = true }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -55,7 +66,7 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
         <div className="flex items-center gap-1.5">
           {isLive && <span className="live-dot" />}
           <span className="text-[11px] font-semibold" style={{ color: STATUS_COLORS[game.status] }}>
-            {isLive ? `${game.periodLabel} ${game.clock}`.trim() : isFinal ? 'Final' : new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            {isLive ? `${game.periodLabel} ${game.clock}`.trim() : isFinal ? 'Final' : formatGameTime(game.startTime)}
           </span>
         </div>
         {game.venue && (

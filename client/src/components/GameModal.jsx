@@ -46,7 +46,13 @@ export default function GameModal({ game, onClose }) {
           <div className="flex items-center justify-between mb-4">
             <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: isLive ? 'var(--green)' : 'var(--muted)' }}>
               {isLive && <span className="live-dot" />}
-              {isLive ? `${game.periodLabel} ${game.clock}` : isFinal ? 'Final' : 'Scheduled'}
+            {isLive ? `${game.periodLabel} ${game.clock}` : isFinal ? 'Final' : (() => {
+                const d = new Date(game.startTime)
+                const isToday = d.toDateString() === new Date().toDateString()
+                return isToday
+                  ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                  : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+              })()}
             </span>
             <button onClick={onClose} className="text-sm" style={{ color: 'var(--muted)' }}>✕</button>
           </div>
