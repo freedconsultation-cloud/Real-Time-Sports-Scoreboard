@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
+import { SERVER_URL } from '../config.js'
 
 function formatDate(dateStr) {
   const d = new Date(dateStr)

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useFavorites } from '../contexts/FavoritesContext'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
+import { SERVER_URL } from '../config.js'
 
 const LEAGUE_BADGE_COLORS = {
   nfl: '#f97316', nba: '#3b82f6', mlb: '#ef4444', nhl: '#60a5fa',

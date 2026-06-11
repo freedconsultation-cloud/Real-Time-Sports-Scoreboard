@@ -4,7 +4,7 @@ import StatsPanel from './StatsPanel'
 import HistoryChart from './HistoryChart'
 import BoxScore from './BoxScore'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
+import { SERVER_URL } from '../config.js'
 const TABS = ['Score', 'Box Score', 'Commentary', 'Stats']
 
 const LEAGUE_SPORT = {

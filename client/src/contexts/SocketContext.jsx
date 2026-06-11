@@ -3,7 +3,7 @@ import { io } from 'socket.io-client'
 
 const SocketContext = createContext(null)
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
+import { SERVER_URL } from '../config.js'
 
 export function SocketProvider({ children, onKeyEvent }) {
   const socketRef = useRef(null)

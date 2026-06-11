@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useFavorites } from '../contexts/FavoritesContext'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
+import { SERVER_URL } from '../config.js'
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
 
 function urlBase64ToUint8Array(b64) {
