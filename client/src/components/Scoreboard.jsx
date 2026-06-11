@@ -7,6 +7,70 @@ import GameModal from './GameModal'
 
 const ALL_LEAGUES = ['nfl', 'nba', 'mlb', 'nhl', 'soccer', 'worldcup', 'ncaaf', 'ncaab', 'ncaaw']
 
+function dateLabel(dateStr) {
+  const d = new Date(dateStr)
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
+  return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
+function groupByDate(games) {
+  // Live games always float to the top as their own group
+  const live = games.filter((g) => g.status === 'live')
+  const rest = games.filter((g) => g.status !== 'live')
+
+  const groups = {}
+  for (const game of rest) {
+    const key = new Date(game.startTime).toDateString()
+    if (!groups[key]) groups[key] = { label: dateLabel(game.startTime), date: new Date(game.startTime), games: [] }
+    groups[key].games.push(game)
+  }
+
+  // Sort each group: final first, then scheduled
+  for (const g of Object.values(groups)) {
+    g.games.sort((a, b) => {
+      if (a.status === b.status) return new Date(a.startTime) - new Date(b.startTime)
+      if (a.status === 'final') return -1
+      return 1
+    })
+  }
+
+  const sorted = Object.values(groups).sort((a, b) => a.date - b.date)
+  return { live, dateGroups: sorted }
+}
+
+function GameGrid({ games, onSelect, onAuthRequired, keyPrefix = '' }) {
+  return (
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      {games.map((game) => (
+        <GameCard
+          key={`${keyPrefix}${game.league}-${game.id}`}
+          game={game}
+          onClick={() => onSelect(game)}
+          onAuthRequired={onAuthRequired}
+        />
+      ))}
+    </div>
+  )
+}
+
+function DateSection({ label, games, onSelect, onAuthRequired }) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-3">
+        <h3 className="text-xs font-bold uppercase tracking-widest shrink-0" style={{ color: 'var(--muted)' }}>
+          {label}
+        </h3>
+        <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+      </div>
+      <GameGrid games={games} onSelect={onSelect} onAuthRequired={onAuthRequired} />
+    </div>
+  )
+}
+
 export default function Scoreboard({ league, onAuthRequired }) {
   const { gamesByLeague, subscribe, unsubscribe } = useSocket()
   const { isFavorite, favorites } = useFavorites()
@@ -24,7 +88,6 @@ export default function Scoreboard({ league, onAuthRequired }) {
     return () => unsubscribe(league)
   }, [league])
 
-  // Favorites tab: gather games across all leagues
   if (isFavTab) {
     if (!user) {
       return (
@@ -60,20 +123,20 @@ export default function Scoreboard({ league, onAuthRequired }) {
       return (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <p className="text-3xl">📅</p>
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>No games scheduled for your favorite teams today.</p>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>No upcoming games for your favorite teams.</p>
         </div>
       )
     }
 
-    const live = favGames.filter((g) => g.status === 'live')
-    const scheduled = favGames.filter((g) => g.status === 'scheduled')
-    const final = favGames.filter((g) => g.status === 'final')
-
+    const { live, dateGroups } = groupByDate(favGames)
     return (
       <>
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {[...live, ...scheduled, ...final].map((game) => (
-            <GameCard key={`${game.league}-${game.id}`} game={game} onClick={() => setSelected(game)} onAuthRequired={onAuthRequired} />
+        <div className="space-y-8">
+          {live.length > 0 && (
+            <DateSection label="Live Now" games={live} onSelect={setSelected} onAuthRequired={onAuthRequired} />
+          )}
+          {dateGroups.map(({ label, games }) => (
+            <DateSection key={label} label={label} games={games} onSelect={setSelected} onAuthRequired={onAuthRequired} />
           ))}
         </div>
         {selected && <GameModal game={selected} onClose={() => setSelected(null)} />}
@@ -94,15 +157,15 @@ export default function Scoreboard({ league, onAuthRequired }) {
     )
   }
 
-  const live = games.filter((g) => g.status === 'live')
-  const scheduled = games.filter((g) => g.status === 'scheduled')
-  const final = games.filter((g) => g.status === 'final')
-
+  const { live, dateGroups } = groupByDate(games)
   return (
     <>
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {[...live, ...scheduled, ...final].map((game) => (
-          <GameCard key={game.id} game={game} onClick={() => setSelected(game)} onAuthRequired={onAuthRequired} />
+      <div className="space-y-8">
+        {live.length > 0 && (
+          <DateSection label="Live Now" games={live} onSelect={setSelected} onAuthRequired={onAuthRequired} />
+        )}
+        {dateGroups.map(({ label, games }) => (
+          <DateSection key={label} label={label} games={games} onSelect={setSelected} onAuthRequired={onAuthRequired} />
         ))}
       </div>
       {selected && <GameModal game={selected} onClose={() => setSelected(null)} />}
