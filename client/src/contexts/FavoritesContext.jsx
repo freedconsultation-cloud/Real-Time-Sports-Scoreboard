@@ -8,28 +8,41 @@ export function FavoritesProvider({ children }) {
   const { user } = useAuth()
   const [favorites, setFavorites] = useState([])
   const [error, setError] = useState(null)
-  // Ref always holds latest favorites so toggle never has a stale closure
-  const favRef = useRef(favorites)
-  useEffect(() => { favRef.current = favorites }, [favorites])
 
+  // Track latest favorites synchronously so toggle never reads stale state
+  const favRef = useRef([])
+  const setFavs = (next) => {
+    const value = typeof next === 'function' ? next(favRef.current) : next
+    favRef.current = value
+    setFavorites(value)
+  }
+
+  // Only reload from Firestore when the user UID actually changes
+  const loadedUidRef = useRef(null)
   useEffect(() => {
-    if (!user) { setFavorites([]); return }
-    getFavorites(user.uid)
-      .then(setFavorites)
+    const uid = user?.uid ?? null
+    if (uid === loadedUidRef.current) return
+    loadedUidRef.current = uid
+    if (!uid) { setFavs([]); return }
+    getFavorites(uid)
+      .then(setFavs)
       .catch((err) => setError(err.message))
   }, [user])
 
   const toggle = useCallback(async (teamId) => {
     if (!user) return
-    const removing = favRef.current.includes(teamId)
-    setFavorites((f) => removing ? f.filter((id) => id !== teamId) : [...f, teamId])
+    const before = favRef.current
+    const removing = before.includes(teamId)
+    const after = removing ? before.filter((id) => id !== teamId) : [...before, teamId]
+
+    setFavs(after) // optimistic — update ref + state together
+
     try {
       if (removing) await removeFavorite(user.uid, teamId)
       else await addFavorite(user.uid, teamId)
       setError(null)
     } catch (err) {
-      // Roll back
-      setFavorites((f) => removing ? [...f, teamId] : f.filter((id) => id !== teamId))
+      setFavs(before) // roll back to exact pre-toggle state
       setError(err.message)
     }
   }, [user])
