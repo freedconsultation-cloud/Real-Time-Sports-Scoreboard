@@ -51,13 +51,7 @@ export async function getFavorites(uid) {
 
 export async function addFavorite(uid, teamId) {
   if (!db) return
-  const ref = doc(db, 'users', uid)
-  const snap = await getDoc(ref)
-  if (snap.exists()) {
-    await updateDoc(ref, { favorites: arrayUnion(teamId) })
-  } else {
-    await setDoc(ref, { favorites: [teamId] })
-  }
+  await setDoc(doc(db, 'users', uid), { favorites: arrayUnion(teamId) }, { merge: true })
 }
 
 export async function removeFavorite(uid, teamId) {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { getFavorites, addFavorite, removeFavorite } from '../firebase'
 
@@ -8,36 +8,31 @@ export function FavoritesProvider({ children }) {
   const { user } = useAuth()
   const [favorites, setFavorites] = useState([])
   const [error, setError] = useState(null)
+  // Ref always holds latest favorites so toggle never has a stale closure
+  const favRef = useRef(favorites)
+  useEffect(() => { favRef.current = favorites }, [favorites])
 
   useEffect(() => {
     if (!user) { setFavorites([]); return }
     getFavorites(user.uid)
       .then(setFavorites)
-      .catch((err) => {
-        console.error('Failed to load favorites:', err)
-        setError(err.message)
-      })
+      .catch((err) => setError(err.message))
   }, [user])
 
   const toggle = useCallback(async (teamId) => {
     if (!user) return
-    const removing = favorites.includes(teamId)
-    // Optimistic update
+    const removing = favRef.current.includes(teamId)
     setFavorites((f) => removing ? f.filter((id) => id !== teamId) : [...f, teamId])
     try {
-      if (removing) {
-        await removeFavorite(user.uid, teamId)
-      } else {
-        await addFavorite(user.uid, teamId)
-      }
+      if (removing) await removeFavorite(user.uid, teamId)
+      else await addFavorite(user.uid, teamId)
       setError(null)
     } catch (err) {
-      // Roll back optimistic update
+      // Roll back
       setFavorites((f) => removing ? [...f, teamId] : f.filter((id) => id !== teamId))
       setError(err.message)
-      console.error('Failed to save favorite:', err)
     }
-  }, [user, favorites])
+  }, [user])
 
   return (
     <FavoritesContext.Provider value={{ favorites, toggle, isFavorite: (id) => favorites.includes(id), error }}>
