@@ -103,9 +103,16 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
             {isLive ? `${game.periodLabel} ${game.clock}`.trim() : isFinal ? 'Final' : formatGameTime(game.startTime)}
           </span>
         </div>
-        {game.venue && (
-          <span className="text-[10px] truncate max-w-[120px]" style={{ color: 'var(--muted)' }}>{game.venue}</span>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {game.broadcasts?.length > 0 && (
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ background: 'var(--surface)', color: 'var(--fg)', border: '1px solid var(--border)' }}>
+              {game.broadcasts.slice(0, 2).join(' · ')}
+            </span>
+          )}
+          {game.venue && (
+            <span className="text-[10px] truncate max-w-[100px]" style={{ color: 'var(--muted)' }}>{game.venue}</span>
+          )}
+        </div>
       </div>
 
       {/* Teams */}

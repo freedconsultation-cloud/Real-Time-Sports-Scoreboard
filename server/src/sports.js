@@ -50,6 +50,7 @@ function normalizeGame(event, leagueKey) {
     startTime: event.date,
     venue: comp.venue?.fullName || '',
     odds: extractOdds(comp, home, away),
+    broadcasts: extractBroadcasts(comp),
     homeTeam: {
       id: home.team?.id,
       name: home.team?.displayName,
@@ -86,6 +87,20 @@ function getPeriodLabel(period, sport, status, description, detail) {
     return `${arrow} Inning ${period}`;
   }
   return `${period}`;
+}
+
+function extractBroadcasts(comp) {
+  const geo = comp.geoBroadcasts || [];
+  const names = geo
+    .filter((b) => b.media?.shortName)
+    .map((b) => b.media.shortName)
+  // fallback to older broadcasts array
+  if (!names.length) {
+    (comp.broadcasts || []).forEach((b) => {
+      (b.names || []).forEach((n) => { if (n) names.push(n) })
+    })
+  }
+  return [...new Set(names)] // dedupe
 }
 
 function extractOdds(comp, home, away) {
