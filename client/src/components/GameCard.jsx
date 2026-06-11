@@ -71,7 +71,7 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
             className="ml-1 text-base opacity-40 hover:opacity-100 transition-opacity shrink-0"
             style={{ color: awayIsFav ? 'var(--accent)' : 'var(--muted)' }}
             onClick={(e) => handleFav(e, game.awayTeam.id)}
-            title={awayIsFav ? 'Remove favourite' : 'Add to favourites'}
+            title={awayIsFav ? 'Remove favorite' : 'Add to favorites'}
           >
             {awayIsFav ? '★' : '☆'}
           </button>
@@ -82,7 +82,7 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
             className="ml-1 text-base opacity-40 hover:opacity-100 transition-opacity shrink-0"
             style={{ color: homeIsFav ? 'var(--accent)' : 'var(--muted)' }}
             onClick={(e) => handleFav(e, game.homeTeam.id)}
-            title={homeIsFav ? 'Remove favourite' : 'Add to favourites'}
+            title={homeIsFav ? 'Remove favorite' : 'Add to favorites'}
           >
             {homeIsFav ? '★' : '☆'}
           </button>

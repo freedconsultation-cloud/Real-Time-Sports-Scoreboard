@@ -34,7 +34,7 @@ export default function Scoreboard({ league, showFavOnly, onAuthRequired }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <p className="text-3xl">★</p>
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>No favourite teams playing today.</p>
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>No favorite teams playing today.</p>
         <p className="text-xs" style={{ color: 'var(--muted)' }}>Click the ☆ on any team card to add them.</p>
       </div>
     )

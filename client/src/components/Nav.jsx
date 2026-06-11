@@ -46,7 +46,7 @@ export default function Nav({ showFavOnly, onToggleFavOnly }) {
                 border: '1px solid var(--border)',
               }}
             >
-              ★ Favourites
+              ★ Favorites
             </button>
           )}
 

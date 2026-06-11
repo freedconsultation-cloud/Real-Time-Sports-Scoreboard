@@ -48,7 +48,7 @@ export default function AuthModal({ onClose }) {
         </div>
 
         <p className="text-xs" style={{ color: 'var(--muted)' }}>
-          Save your favourite teams and get personalised notifications.
+          Save your favorite teams and get personalized notifications.
         </p>
 
         {/* Google */}
