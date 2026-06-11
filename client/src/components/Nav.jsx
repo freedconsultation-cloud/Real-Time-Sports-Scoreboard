@@ -5,7 +5,7 @@ import { logout } from '../firebase'
 import AuthModal from './AuthModal'
 import TeamSearch from './TeamSearch'
 
-export default function Nav({ showFavOnly, onToggleFavOnly }) {
+export default function Nav() {
   const { user } = useAuth()
   const { connected } = useSocket()
   const [showAuth, setShowAuth] = useState(false)
@@ -46,20 +46,6 @@ export default function Nav({ showFavOnly, onToggleFavOnly }) {
           >
             🔍
           </button>
-
-          {user && (
-            <button
-              onClick={onToggleFavOnly}
-              className="text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
-              style={{
-                background: showFavOnly ? 'var(--accent)' : 'var(--surface)',
-                color: showFavOnly ? '#000' : 'var(--muted)',
-                border: '1px solid var(--border)',
-              }}
-            >
-              ★ Favorites
-            </button>
-          )}
 
           {user ? (
             <div className="relative">

@@ -9,7 +9,6 @@ import AuthModal from './components/AuthModal'
 
 export default function App() {
   const [league, setLeague] = useState('nfl')
-  const [showFavOnly, setShowFavOnly] = useState(false)
   const [events, setEvents] = useState([])
   const [showAuthModal, setShowAuthModal] = useState(false)
 
@@ -26,14 +25,13 @@ export default function App() {
     <AuthProvider>
       <SocketProvider onKeyEvent={handleKeyEvent}>
         <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-          <Nav showFavOnly={showFavOnly} onToggleFavOnly={() => setShowFavOnly((v) => !v)} />
+          <Nav />
 
           <main className="max-w-6xl mx-auto px-4 py-4">
             <SportTabs active={league} onChange={setLeague} />
             <div className="mt-4">
               <Scoreboard
                 league={league}
-                showFavOnly={showFavOnly}
                 onAuthRequired={() => setShowAuthModal(true)}
               />
             </div>
