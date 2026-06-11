@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import { logout } from '../firebase'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 import AuthModal from './AuthModal'
 import TeamSearch from './TeamSearch'
 
 export default function Nav() {
   const { user } = useAuth()
   const { connected } = useSocket()
+  const { supported: pushSupported, subscribed, permission, loading: pushLoading, enable, disable } = usePushNotifications()
   const [showAuth, setShowAuth] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
@@ -46,6 +48,23 @@ export default function Nav() {
           >
             🔍
           </button>
+
+          {pushSupported && permission !== 'denied' && (
+            <button
+              onClick={subscribed ? disable : enable}
+              disabled={pushLoading}
+              className="text-sm px-3 py-1.5 rounded-lg transition-colors"
+              style={{
+                background: subscribed ? 'var(--accent)' : 'var(--surface)',
+                border: `1px solid ${subscribed ? 'var(--accent)' : 'var(--border)'}`,
+                color: subscribed ? '#000' : 'var(--muted)',
+                opacity: pushLoading ? 0.6 : 1,
+              }}
+              title={subscribed ? 'Disable score alerts' : 'Enable score alerts for favorite teams'}
+            >
+              {subscribed ? '🔔' : '🔕'}
+            </button>
+          )}
 
           {user ? (
             <div className="relative">

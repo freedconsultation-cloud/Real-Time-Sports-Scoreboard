@@ -5,7 +5,16 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fetchGames, fetchTeams, fetchTeamProfile, detectEvents, LEAGUES } from './sports.js';
+import webpush from 'web-push';
+import { fetchGames, fetchTeams, fetchTeamProfile, fetchBoxScore, detectEvents, LEAGUES } from './sports.js';
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL || 'mailto:example@example.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -21,8 +30,10 @@ const io = new Server(httpServer, {
 app.use(cors({ origin: CLIENT_URL }));
 app.use(express.json());
 
-// In-memory game cache: { [league]: Game[] }
+// In-memory caches
 const gameCache = {};
+// Push subscriptions: endpoint -> { subscription, favorites: string[] }
+const pushSubscriptions = new Map();
 // Commentary feed per game: { [gameId]: string[] }
 const commentaryCache = {};
 // Teams cache: Team[] (all leagues combined, loaded once on startup)
@@ -60,10 +71,49 @@ app.get('/api/team/:league/:teamId', async (req, res) => {
   }
 });
 
+app.get('/api/games/:league/:gameId/boxscore', async (req, res) => {
+  const { league, gameId } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    const data = await fetchBoxScore(league, gameId);
+    if (!data) return res.status(404).json({ error: 'No box score available' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/games/:league/:gameId/commentary', (req, res) => {
   const feed = commentaryCache[req.params.gameId] || [];
   res.json(feed);
 });
+
+app.post('/api/push/subscribe', (req, res) => {
+  const { subscription, favorites = [] } = req.body;
+  if (!subscription?.endpoint) return res.status(400).json({ error: 'Missing subscription' });
+  pushSubscriptions.set(subscription.endpoint, { subscription, favorites });
+  res.json({ ok: true });
+});
+
+app.delete('/api/push/unsubscribe', (req, res) => {
+  const { endpoint } = req.body;
+  if (endpoint) pushSubscriptions.delete(endpoint);
+  res.json({ ok: true });
+});
+
+app.get('/api/push/vapid-public-key', (_, res) => {
+  res.json({ key: process.env.VAPID_PUBLIC_KEY || null });
+});
+
+async function sendPush(subscription, payload) {
+  try {
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
+  } catch (err) {
+    if (err.statusCode === 410 || err.statusCode === 404) {
+      pushSubscriptions.delete(subscription.endpoint);
+    }
+  }
+}
 
 // ── Socket.IO ──────────────────────────────────────────────────
 
@@ -110,9 +160,22 @@ async function pollLeague(league) {
   // Broadcast updates
   io.to(`league:${league}`).emit('games:update', { league, games: fresh });
 
-  // Broadcast key events
+  // Broadcast key events + push notifications
   for (const event of events) {
     io.emit('key:event', event);
+
+    if (event.type === 'score' && pushSubscriptions.size > 0 && process.env.VAPID_PUBLIC_KEY) {
+      const favKey = `${event.league}-${event.teamId}`;
+      const emoji = LEAGUES[event.league]?.emoji || '🏆';
+      const payload = {
+        title: `${emoji} ${event.abbr} scored!`,
+        body: `${event.score.replace('-', ' – ')} · ${event.period}${event.clock ? ' ' + event.clock : ''}`,
+        icon: '/favicon.ico',
+      };
+      for (const { subscription, favorites } of pushSubscriptions.values()) {
+        if (favorites.includes(favKey)) sendPush(subscription, payload);
+      }
+    }
   }
 }
 

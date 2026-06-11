@@ -2,9 +2,78 @@ import { useEffect, useState } from 'react'
 import Commentary from './Commentary'
 import StatsPanel from './StatsPanel'
 import HistoryChart from './HistoryChart'
+import BoxScore from './BoxScore'
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
-const TABS = ['Score', 'Commentary', 'Stats']
+const TABS = ['Score', 'Box Score', 'Commentary', 'Stats']
+
+const LEAGUE_SPORT = {
+  nfl: 'football', ncaaf: 'football',
+  nba: 'basketball', ncaab: 'basketball', ncaaw: 'basketball',
+  mlb: 'baseball',
+  nhl: 'hockey',
+  soccer: 'soccer', worldcup: 'soccer',
+}
+
+function getPeriodHeaders(sport, count) {
+  if (sport === 'football' || sport === 'basketball') {
+    return Array.from({ length: count }, (_, i) => i < 4 ? `Q${i + 1}` : `OT${i > 4 ? i - 3 : ''}`)
+  }
+  if (sport === 'hockey') {
+    return Array.from({ length: count }, (_, i) => i < 3 ? `P${i + 1}` : 'OT')
+  }
+  if (sport === 'baseball') {
+    return Array.from({ length: count }, (_, i) => `${i + 1}`)
+  }
+  if (sport === 'soccer') {
+    return Array.from({ length: count }, (_, i) => i === 0 ? '1H' : i === 1 ? '2H' : `ET${i - 1}`)
+  }
+  return Array.from({ length: count }, (_, i) => `${i + 1}`)
+}
+
+function LinescoreTable({ game }) {
+  const sport = LEAGUE_SPORT[game.league] || 'generic'
+  const homeLS = game.homeTeam.linescores || []
+  const awayLS = game.awayTeam.linescores || []
+  const count = Math.max(homeLS.length, awayLS.length)
+  if (count === 0) return null
+
+  const headers = getPeriodHeaders(sport, count)
+
+  return (
+    <div className="overflow-x-auto mb-4 rounded-lg" style={{ border: '1px solid var(--border)' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 'max-content' }}>
+        <thead>
+          <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+            <th className="text-left text-[11px] font-semibold px-3 py-2 w-12" style={{ color: 'var(--muted)' }}> </th>
+            {headers.map((h) => (
+              <th key={h} className="text-center text-[11px] font-semibold px-2 py-2 w-8" style={{ color: 'var(--muted)' }}>{h}</th>
+            ))}
+            <th className="text-center text-[11px] font-bold px-3 py-2" style={{ color: 'var(--fg)' }}>T</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            { team: game.awayTeam, ls: awayLS },
+            { team: game.homeTeam, ls: homeLS },
+          ].map(({ team, ls }) => (
+            <tr key={team.abbr} style={{ borderTop: '1px solid var(--border)' }}>
+              <td className="px-3 py-2 text-[12px] font-bold" style={{ color: 'var(--fg)' }}>{team.abbr}</td>
+              {headers.map((_, i) => (
+                <td key={i} className="text-center px-2 py-2 text-[12px] tabular-nums" style={{ color: 'var(--muted)' }}>
+                  {ls[i] != null ? ls[i] : '–'}
+                </td>
+              ))}
+              <td className="text-center px-3 py-2 text-[13px] font-black tabular-nums" style={{ color: 'var(--fg)' }}>
+                {team.score}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 export default function GameModal({ game, onClose }) {
   const [tab, setTab] = useState('Score')
@@ -42,11 +111,11 @@ export default function GameModal({ game, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 pt-5 pb-3" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+        <div className="px-5 pt-5 pb-3 shrink-0" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between mb-4">
             <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: isLive ? 'var(--green)' : 'var(--muted)' }}>
               {isLive && <span className="live-dot" />}
-            {isLive ? `${game.periodLabel} ${game.clock}` : isFinal ? 'Final' : (() => {
+              {isLive ? `${game.periodLabel} ${game.clock}` : isFinal ? 'Final' : (() => {
                 const d = new Date(game.startTime)
                 const isToday = d.toDateString() === new Date().toDateString()
                 return isToday
@@ -54,6 +123,11 @@ export default function GameModal({ game, onClose }) {
                   : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
               })()}
             </span>
+            {game.broadcasts?.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--fg)' }}>
+                {game.broadcasts[0]}
+              </span>
+            )}
             <button onClick={onClose} className="text-sm" style={{ color: 'var(--muted)' }}>✕</button>
           </div>
 
@@ -70,15 +144,13 @@ export default function GameModal({ game, onClose }) {
             {/* Score */}
             <div className="text-center shrink-0">
               <div className="flex items-center gap-3">
-                <span
-                  className={`text-4xl font-black tabular-nums ${awayWins ? '' : 'opacity-50'}`}
-                  style={{ color: 'var(--fg)' }}
-                >{game.awayTeam.score}</span>
+                <span className={`text-4xl font-black tabular-nums ${awayWins ? '' : 'opacity-50'}`} style={{ color: 'var(--fg)' }}>
+                  {game.awayTeam.score}
+                </span>
                 <span className="text-lg" style={{ color: 'var(--muted)' }}>–</span>
-                <span
-                  className={`text-4xl font-black tabular-nums ${homeWins ? '' : 'opacity-50'}`}
-                  style={{ color: 'var(--fg)' }}
-                >{game.homeTeam.score}</span>
+                <span className={`text-4xl font-black tabular-nums ${homeWins ? '' : 'opacity-50'}`} style={{ color: 'var(--fg)' }}>
+                  {game.homeTeam.score}
+                </span>
               </div>
               {game.venue && (
                 <p className="text-[10px] mt-1" style={{ color: 'var(--muted)' }}>{game.venue}</p>
@@ -97,7 +169,7 @@ export default function GameModal({ game, onClose }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
           {TABS.map((t) => (
             <button
               key={t}
@@ -107,15 +179,23 @@ export default function GameModal({ game, onClose }) {
             >
               {t}
               {tab === t && (
-                <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
               )}
             </button>
           ))}
         </div>
 
         {/* Body */}
-        <div className="p-5 overflow-y-auto">
-          {tab === 'Score' && <HistoryChart game={game} />}
+        <div className="p-4 overflow-y-auto flex-1">
+          {tab === 'Score' && (
+            <>
+              <LinescoreTable game={game} />
+              <HistoryChart game={game} />
+            </>
+          )}
+          {tab === 'Box Score' && (
+            <BoxScore league={game.league} gameId={game.id} game={game} />
+          )}
           {tab === 'Commentary' && <Commentary plays={commentary} />}
           {tab === 'Stats' && <StatsPanel leaders={game.leaders || []} />}
         </div>

@@ -59,6 +59,7 @@ function normalizeGame(event, leagueKey) {
       color: home.team?.color ? `#${home.team.color}` : null,
       score: parseInt(home.score || 0, 10),
       record: home.records?.[0]?.summary || '',
+      linescores: (home.linescores || []).map((l) => Math.round(l.value ?? l)),
     },
     awayTeam: {
       id: away.team?.id,
@@ -68,6 +69,7 @@ function normalizeGame(event, leagueKey) {
       color: away.team?.color ? `#${away.team.color}` : null,
       score: parseInt(away.score || 0, 10),
       record: away.records?.[0]?.summary || '',
+      linescores: (away.linescores || []).map((l) => Math.round(l.value ?? l)),
     },
     leaders: extractLeaders(comp),
   };
@@ -296,6 +298,53 @@ export async function fetchGames(leagueKey) {
   }
 }
 
+// Only show the most useful stat categories per sport — football has 10+ which is too much
+const PRIORITY_CATEGORIES = {
+  football: ['passing', 'rushing', 'receiving', 'defensive'],
+};
+
+export async function fetchBoxScore(leagueKey, gameId) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return null;
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/summary?event=${gameId}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+
+    const priority = PRIORITY_CATEGORIES[meta.sport] || null;
+
+    const teams = (data.boxscore?.players || []).map((teamEntry) => {
+      let cats = (teamEntry.statistics || []).map((cat) => {
+        const athletes = (cat.athletes || [])
+          .filter((a) => !a.didNotPlay && a.active !== false)
+          .filter((a) => (a.stats || []).some((s) => s !== '--' && s !== '' && s !== '0:00'))
+          .map((a) => ({
+            name: a.athlete?.displayName || '',
+            jersey: a.athlete?.jersey || '',
+            position: a.athlete?.position?.abbreviation || '',
+            starter: a.starter ?? true,
+            stats: a.stats || [],
+          }))
+          .slice(0, 12);
+        if (!athletes.length) return null;
+        return { name: cat.name, displayName: cat.displayName || cat.name, labels: cat.labels || [], athletes };
+      }).filter(Boolean);
+
+      if (priority) {
+        cats = cats.filter((c) => priority.includes(c.name));
+        cats.sort((a, b) => priority.indexOf(a.name) - priority.indexOf(b.name));
+      }
+
+      return { teamId: teamEntry.team?.id, teamName: teamEntry.team?.displayName, teamAbbr: teamEntry.team?.abbreviation, categories: cats };
+    }).filter((t) => t.categories.length > 0);
+
+    return { teams };
+  } catch {
+    return null;
+  }
+}
+
 // Detect meaningful score changes between two snapshots
 export function detectEvents(oldGames, newGames) {
   const events = [];
@@ -314,6 +363,7 @@ export function detectEvents(oldGames, newGames) {
         type: 'score',
         team: game.homeTeam.name,
         abbr: game.homeTeam.abbr,
+        teamId: game.homeTeam.id,
         points: homeScored,
         score: `${game.homeTeam.score}-${game.awayTeam.score}`,
         period: game.periodLabel,
@@ -327,6 +377,7 @@ export function detectEvents(oldGames, newGames) {
         type: 'score',
         team: game.awayTeam.name,
         abbr: game.awayTeam.abbr,
+        teamId: game.awayTeam.id,
         points: awayScored,
         score: `${game.awayTeam.score}-${game.homeTeam.score}`,
         period: game.periodLabel,
