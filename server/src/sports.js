@@ -288,11 +288,12 @@ function extractStandingsGroup(data, teamId, sport) {
   return { groupName: group.name, entries };
 }
 
-export async function fetchGames(leagueKey) {
+export async function fetchGames(leagueKey, date = null) {
   const meta = LEAGUES[leagueKey];
   if (!meta) return [];
   try {
-    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/scoreboard`;
+    let url = `${ESPN_BASE}/${meta.sport}/${meta.league}/scoreboard`;
+    if (date) url += `?dates=${date}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data = await res.json();
@@ -616,4 +617,89 @@ export function detectEvents(oldGames, newGames) {
     }
   }
   return events;
+}
+
+// ── Game news ──────────────────────────────────────────────────
+
+export async function fetchGameNews(leagueKey, gameId) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return [];
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/summary?event=${gameId}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const articles = data.news?.articles || [];
+    const mainArt = data.article;
+    const all = mainArt && !articles.find((a) => a.id === mainArt.id)
+      ? [mainArt, ...articles]
+      : articles;
+    return all.slice(0, 8).map((a) => ({
+      id: a.id,
+      headline: a.headline || a.linkText || '',
+      description: a.description || '',
+      published: a.published || a.lastModified || '',
+      image: a.images?.[0]?.url || null,
+    })).filter((a) => a.headline);
+  } catch {
+    return [];
+  }
+}
+
+// ── Injuries (from game summary) ───────────────────────────────
+
+export async function fetchGameInjuries(leagueKey, gameId) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return [];
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/summary?event=${gameId}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.injuries || []).map((ti) => ({
+      teamId: ti.team?.id,
+      teamAbbr: ti.team?.abbreviation,
+      teamLogo: ti.team?.logos?.[0]?.href || ti.team?.logo || null,
+      players: (ti.injuries || []).map((inj) => ({
+        id: inj.athlete?.id,
+        name: inj.athlete?.displayName || '',
+        position: inj.athlete?.position?.abbreviation || '',
+        jersey: inj.athlete?.jersey || '',
+        headshot: inj.athlete?.headshot?.href || null,
+        status: inj.status || '',
+        type: inj.type?.description || '',
+      })),
+    })).filter((ti) => ti.players.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+// ── Team roster ────────────────────────────────────────────────
+
+export async function fetchTeamRoster(leagueKey, teamId) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return [];
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/teams/${teamId}/roster`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.athletes || []).map((group) => ({
+      position: group.position?.displayName || 'Players',
+      players: (group.items || []).map((p) => ({
+        id: p.id,
+        name: p.displayName,
+        jersey: p.jersey || '',
+        position: p.position?.abbreviation || '',
+        headshot: p.headshot?.href || null,
+        height: p.displayHeight || '',
+        weight: p.displayWeight || '',
+        age: p.age || null,
+        experience: p.experience?.years ?? null,
+      })),
+    })).filter((g) => g.players.length > 0);
+  } catch {
+    return [];
+  }
 }

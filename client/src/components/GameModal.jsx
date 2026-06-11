@@ -5,7 +5,7 @@ import HistoryChart from './HistoryChart'
 import BoxScore from './BoxScore'
 
 import { SERVER_URL } from '../config.js'
-const TABS = ['Score', 'Box Score', 'H2H', 'Commentary', 'Stats']
+const TABS = ['Score', 'Box Score', 'H2H', 'Injuries', 'News', 'Commentary', 'Stats']
 
 const LEAGUE_SPORT = {
   nfl: 'football', ncaaf: 'football',
@@ -114,6 +114,10 @@ export default function GameModal({ game, onClose }) {
   const [winProb, setWinProb] = useState(null)
   const [h2h, setH2h] = useState([])
   const [h2hLoading, setH2hLoading] = useState(false)
+  const [news, setNews] = useState([])
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [injuries, setInjuries] = useState([])
+  const [injuriesLoading, setInjuriesLoading] = useState(false)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -144,6 +148,26 @@ export default function GameModal({ game, onClose }) {
       .then(setH2h)
       .catch(() => {})
       .finally(() => setH2hLoading(false))
+  }, [tab, game?.id])
+
+  useEffect(() => {
+    if (tab !== 'News' || !game) return
+    setNewsLoading(true)
+    fetch(`${SERVER_URL}/api/games/${game.league}/${game.id}/news`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setNews)
+      .catch(() => {})
+      .finally(() => setNewsLoading(false))
+  }, [tab, game?.id])
+
+  useEffect(() => {
+    if (tab !== 'Injuries' || !game) return
+    setInjuriesLoading(true)
+    fetch(`${SERVER_URL}/api/games/${game.league}/${game.id}/injuries`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setInjuries)
+      .catch(() => {})
+      .finally(() => setInjuriesLoading(false))
   }, [tab, game?.id])
 
   if (!game) return null
@@ -323,6 +347,75 @@ export default function GameModal({ game, onClose }) {
                   </div>
                 </>
               )}
+            </div>
+          )}
+          {tab === 'Injuries' && (
+            <div>
+              {injuriesLoading && (
+                <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>Loading…</p>
+              )}
+              {!injuriesLoading && !injuries.length && (
+                <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>No injury data available.</p>
+              )}
+              {injuries.map((ti) => (
+                <div key={ti.teamId} className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    {ti.teamLogo && <img src={ti.teamLogo} alt={ti.teamAbbr} className="w-5 h-5 object-contain" />}
+                    <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>{ti.teamAbbr}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {ti.players.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: 'var(--surface-2)' }}>
+                        {p.headshot
+                          ? <img src={p.headshot} alt={p.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          : <div className="w-8 h-8 rounded-full shrink-0" style={{ background: 'var(--surface)' }} />
+                        }
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: 'var(--fg)' }}>{p.name}</p>
+                          <p className="text-[11px]" style={{ color: 'var(--muted)' }}>{p.position}{p.jersey ? ` · #${p.jersey}` : ''}</p>
+                        </div>
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
+                          style={{
+                            background: p.status.toLowerCase().includes('out') ? 'rgba(239,68,68,0.12)' : 'rgba(234,179,8,0.12)',
+                            color: p.status.toLowerCase().includes('out') ? 'var(--red)' : 'var(--yellow)',
+                          }}
+                        >
+                          {p.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab === 'News' && (
+            <div>
+              {newsLoading && (
+                <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>Loading…</p>
+              )}
+              {!newsLoading && !news.length && (
+                <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>No articles available.</p>
+              )}
+              <div className="space-y-3">
+                {news.map((a) => (
+                  <div key={a.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                    {a.image && <img src={a.image} alt="" className="w-full h-32 object-cover" />}
+                    <div className="p-3">
+                      <p className="text-sm font-bold leading-snug" style={{ color: 'var(--fg)' }}>{a.headline}</p>
+                      {a.description && a.description !== a.headline && (
+                        <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--muted)' }}>{a.description}</p>
+                      )}
+                      {a.published && (
+                        <p className="text-[10px] mt-1.5" style={{ color: 'var(--muted)' }}>
+                          {new Date(a.published).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           {tab === 'Commentary' && <Commentary plays={commentary} />}

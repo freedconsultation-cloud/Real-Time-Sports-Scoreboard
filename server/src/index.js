@@ -5,7 +5,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fetchGames, fetchTeams, fetchTeamProfile, fetchBoxScore, detectEvents, LEAGUES, fetchLeagueStandings, fetchLeaders, fetchHeadToHead, searchPlayers, fetchPlayerStats, fetchWinProbability } from './sports.js';
+import { fetchGames, fetchTeams, fetchTeamProfile, fetchBoxScore, detectEvents, LEAGUES, fetchLeagueStandings, fetchLeaders, fetchHeadToHead, searchPlayers, fetchPlayerStats, fetchWinProbability, fetchGameNews, fetchGameInjuries, fetchTeamRoster } from './sports.js';
 
 // Dynamic import so a missing/broken web-push package can't crash the server
 let webpush = null;
@@ -58,8 +58,12 @@ app.get('/api/leagues', (_, res) => {
 
 app.get('/api/games/:league', async (req, res) => {
   const { league } = req.params;
+  const { date } = req.query;
   if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
-  // Return cache if fresh, otherwise fetch
+  if (date) {
+    const games = await fetchGames(league, date);
+    return res.json(games);
+  }
   if (gameCache[league]) return res.json(gameCache[league]);
   const games = await fetchGames(league);
   gameCache[league] = games;
@@ -163,6 +167,36 @@ app.get('/api/games/:league/:gameId/winprob', async (req, res) => {
     const data = await fetchWinProbability(league, gameId);
     if (!data) return res.status(404).json({ error: 'No win probability data' });
     res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/games/:league/:gameId/news', async (req, res) => {
+  const { league, gameId } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    res.json(await fetchGameNews(league, gameId));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/games/:league/:gameId/injuries', async (req, res) => {
+  const { league, gameId } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    res.json(await fetchGameInjuries(league, gameId));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/team/:league/:teamId/roster', async (req, res) => {
+  const { league, teamId } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    res.json(await fetchTeamRoster(league, teamId));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

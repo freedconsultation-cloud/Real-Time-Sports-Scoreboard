@@ -141,6 +141,9 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [tab, setTab] = useState('Schedule')
+  const [roster, setRoster] = useState(null)
+  const [rosterLoading, setRosterLoading] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -152,15 +155,25 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
       .finally(() => setLoading(false))
   }, [league, teamId])
 
+  useEffect(() => {
+    if (tab !== 'Roster' || roster) return
+    setRosterLoading(true)
+    fetch(`${SERVER_URL}/api/team/${league}/${teamId}/roster`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setRoster)
+      .catch(() => setRoster([]))
+      .finally(() => setRosterLoading(false))
+  }, [tab])
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:px-4"
       style={{ background: 'rgba(0,0,0,0.75)' }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: '85vh' }}
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -201,6 +214,27 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
           </button>
         </div>
 
+        {/* Tab bar */}
+        {!loading && !error && (
+          <div className="overflow-x-auto scrollbar-hide border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex min-w-max">
+              {['Schedule', 'Roster'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className="shrink-0 px-5 py-2.5 text-xs font-semibold relative"
+                  style={{ color: tab === t ? 'var(--accent)' : 'var(--muted)' }}
+                >
+                  {t}
+                  {tab === t && (
+                    <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Body */}
         <div className="overflow-y-auto flex-1">
           {loading && (
@@ -210,14 +244,11 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
             <p className="text-sm text-center py-12" style={{ color: '#ef4444' }}>Could not load team data.</p>
           )}
 
-          {profile && (
+          {profile && tab === 'Schedule' && (
             <>
-              {/* Standings */}
               {profile.standings && (
                 <StandingsTable standings={profile.standings} activeTeamId={teamId} />
               )}
-
-              {/* Upcoming games */}
               {profile.upcomingGames.length > 0 && (
                 <section>
                   <SectionHeader label="Upcoming" />
@@ -226,8 +257,6 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
                   ))}
                 </section>
               )}
-
-              {/* Recent results */}
               {profile.pastGames.length > 0 && (
                 <section>
                   <SectionHeader label="Recent Results" />
@@ -236,11 +265,48 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
                   ))}
                 </section>
               )}
-
               {profile.upcomingGames.length === 0 && profile.pastGames.length === 0 && !profile.standings && (
                 <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>No schedule data available.</p>
               )}
             </>
+          )}
+
+          {tab === 'Roster' && (
+            <div className="p-4">
+              {rosterLoading && (
+                <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>Loading roster…</p>
+              )}
+              {!rosterLoading && roster !== null && !roster.length && (
+                <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>No roster data available.</p>
+              )}
+              {(roster || []).map((group) => (
+                <div key={group.position} className="mb-5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
+                    {group.position}
+                  </p>
+                  <div className="space-y-1.5">
+                    {group.players.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                        {p.headshot
+                          ? <img src={p.headshot} alt={p.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          : <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: 'var(--surface)', color: 'var(--muted)' }}>{p.jersey || '?'}</div>
+                        }
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: 'var(--fg)' }}>{p.name}</p>
+                          <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
+                            {[p.position, p.height, p.weight ? `${p.weight}` : ''].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          {p.jersey && <p className="text-sm font-black tabular-nums" style={{ color: 'var(--muted)' }}>#{p.jersey}</p>}
+                          {p.age && <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Age {p.age}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

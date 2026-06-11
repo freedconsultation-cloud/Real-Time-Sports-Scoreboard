@@ -4,6 +4,8 @@ import { useFavorites } from '../contexts/FavoritesContext'
 import { useAuth } from '../contexts/AuthContext'
 import GameCard from './GameCard'
 import GameModal from './GameModal'
+import { SERVER_URL } from '../config.js'
+import { todayStr } from './DateNav'
 
 const ALL_LEAGUES = ['nfl', 'nba', 'mlb', 'nhl', 'soccer', 'worldcup', 'ncaaf', 'ncaab', 'ncaaw']
 
@@ -71,22 +73,38 @@ function DateSection({ label, games, onSelect, onAuthRequired }) {
   )
 }
 
-export default function Scoreboard({ league, onAuthRequired }) {
+export default function Scoreboard({ league, date, onAuthRequired }) {
   const { gamesByLeague, subscribe, unsubscribe } = useSocket()
   const { isFavorite, favorites } = useFavorites()
   const { user } = useAuth()
   const [selected, setSelected] = useState(null)
+  const [dateGames, setDateGames] = useState(null)
+  const [dateLoading, setDateLoading] = useState(false)
 
   const isFavTab = league === 'favorites'
+  const isToday = !date || date === todayStr()
 
   useEffect(() => {
     if (isFavTab) {
       ALL_LEAGUES.forEach(subscribe)
       return () => ALL_LEAGUES.forEach(unsubscribe)
     }
-    subscribe(league)
-    return () => unsubscribe(league)
-  }, [league])
+    if (isToday) {
+      subscribe(league)
+      return () => unsubscribe(league)
+    }
+  }, [league, isToday])
+
+  useEffect(() => {
+    if (isFavTab || isToday) { setDateGames(null); return }
+    setDateLoading(true)
+    setDateGames(null)
+    fetch(`${SERVER_URL}/api/games/${league}?date=${date}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setDateGames)
+      .catch(() => setDateGames([]))
+      .finally(() => setDateLoading(false))
+  }, [league, date, isToday])
 
   if (isFavTab) {
     if (!user) {
@@ -147,14 +165,27 @@ export default function Scoreboard({ league, onAuthRequired }) {
   }
 
   // Regular league tab
-  const games = gamesByLeague[league] || []
+  const games = isToday ? (gamesByLeague[league] || []) : (dateGames || [])
+
+  if (dateLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <p className="text-3xl">📅</p>
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>Loading games…</p>
+      </div>
+    )
+  }
 
   if (!games.length) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <p className="text-3xl">📡</p>
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>Waiting for game data…</p>
-        <p className="text-xs" style={{ color: 'var(--muted)' }}>Games will appear automatically when the season is active.</p>
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>
+          {isToday ? 'Waiting for game data…' : 'No games on this date.'}
+        </p>
+        {isToday && (
+          <p className="text-xs" style={{ color: 'var(--muted)' }}>Games will appear automatically when the season is active.</p>
+        )}
       </div>
     )
   }

@@ -12,6 +12,8 @@ import { SERVER_URL } from './config.js'
 import TopPerformers from './components/TopPerformers'
 import StandingsModal from './components/StandingsModal'
 import PlayerModal from './components/PlayerModal'
+import PlayerCompare from './components/PlayerCompare'
+import DateNav, { todayStr } from './components/DateNav'
 
 const LEAGUE_LABELS = {
   nfl: 'NFL', nba: 'NBA', mlb: 'MLB', nhl: 'NHL',
@@ -25,7 +27,9 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showStandings, setShowStandings] = useState(false)
   const [showPlayerModal, setShowPlayerModal] = useState(false)
+  const [showCompare, setShowCompare] = useState(false)
   const [standingsAvailable, setStandingsAvailable] = useState(false)
+  const [date, setDate] = useState(todayStr)
 
   useEffect(() => {
     if (league === 'favorites') { setStandingsAvailable(false); return }
@@ -50,7 +54,7 @@ export default function App() {
       <FavoritesProvider>
         <SocketProvider onKeyEvent={handleKeyEvent}>
           <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-            <Nav onPlayerSearch={() => setShowPlayerModal(true)} />
+            <Nav onPlayerSearch={() => setShowPlayerModal(true)} onCompare={() => setShowCompare(true)} />
             <LiveTicker />
 
             <main className="max-w-6xl mx-auto px-4 py-4">
@@ -74,11 +78,17 @@ export default function App() {
                   </button>
                 )}
               </div>
+              {league !== 'favorites' && (
+                <div className="flex justify-center mt-2">
+                  <DateNav date={date} onChange={setDate} />
+                </div>
+              )}
 
               <div className="mt-4">
                 {league !== 'favorites' && <TopPerformers league={league} />}
                 <Scoreboard
                   league={league}
+                  date={date}
                   onAuthRequired={() => setShowAuthModal(true)}
                 />
               </div>
@@ -100,6 +110,7 @@ export default function App() {
                 initialLeague={league !== 'favorites' ? league : 'nba'}
               />
             )}
+            {showCompare && <PlayerCompare onClose={() => setShowCompare(false)} />
           </div>
         </SocketProvider>
       </FavoritesProvider>
