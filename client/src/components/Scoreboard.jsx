@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSocket } from '../contexts/SocketContext'
 import { useFavorites } from '../hooks/useFavorites'
 import GameCard from './GameCard'
 import GameModal from './GameModal'
 
 export default function Scoreboard({ league, showFavOnly, onAuthRequired }) {
-  const { gamesByLeague } = useSocket()
+  const { gamesByLeague, subscribe, unsubscribe } = useSocket()
   const { isFavorite } = useFavorites()
   const [selected, setSelected] = useState(null)
+
+  useEffect(() => {
+    subscribe(league)
+    return () => unsubscribe(league)
+  }, [league])
 
   const games = gamesByLeague[league] || []
 

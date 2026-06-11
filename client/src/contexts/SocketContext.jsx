@@ -28,7 +28,17 @@ export function SocketProvider({ children, onKeyEvent }) {
     return () => socket.disconnect()
   }, [])
 
-  function subscribe(league) {
+  async function subscribe(league) {
+    // Fetch immediately from REST so data shows before the first socket push
+    if (!gamesByLeague[league]) {
+      try {
+        const res = await fetch(`${SERVER_URL}/api/games/${league}`)
+        if (res.ok) {
+          const games = await res.json()
+          setGamesByLeague((prev) => ({ ...prev, [league]: games }))
+        }
+      } catch {}
+    }
     socketRef.current?.emit('subscribe', league)
   }
 
