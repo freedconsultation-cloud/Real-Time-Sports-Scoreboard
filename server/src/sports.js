@@ -31,7 +31,8 @@ function normalizeGame(event, leagueKey) {
 
   const status = normalizeStatus(event.status);
   const period = event.status?.period || 0;
-  const clock = event.status?.displayClock || '';
+  const isTimed = LEAGUES[leagueKey]?.sport !== 'baseball';
+  const clock = isTimed ? (event.status?.displayClock || '') : '';
   const lastPlay = comp.situation?.lastPlay?.text || comp.notes?.[0]?.headline || '';
 
   const leagueMeta = LEAGUES[leagueKey];
