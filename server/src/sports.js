@@ -168,13 +168,15 @@ export async function fetchTeamProfile(leagueKey, teamId) {
   if (!meta) return null;
   const base = `${ESPN_BASE}/${meta.sport}/${meta.league}`;
 
-  const [teamRes, schedRes] = await Promise.all([
+  const [teamRes, schedRes, standingsRes] = await Promise.all([
     fetch(`${base}/teams/${teamId}`, { signal: AbortSignal.timeout(8000) }),
     fetch(`${base}/teams/${teamId}/schedule`, { signal: AbortSignal.timeout(8000) }),
+    fetch(`${base}/standings`, { signal: AbortSignal.timeout(8000) }),
   ]);
 
   const teamData = teamRes.ok ? await teamRes.json() : null;
   const schedData = schedRes.ok ? await schedRes.json() : null;
+  const standingsData = standingsRes.ok ? await standingsRes.json() : null;
 
   const t = teamData?.team;
   if (!t) return null;
@@ -225,7 +227,59 @@ export async function fetchTeamProfile(leagueKey, teamId) {
     last10: `${l10W}-${l10L}`,
     pastGames: past.slice(0, 10),
     upcomingGames: upcoming.slice(0, 8),
+    standings: extractStandingsGroup(standingsData, String(teamId), meta.sport),
   };
+}
+
+// Recursively search ESPN's nested standings tree for the group containing teamId
+function findStandingsGroup(node, teamId) {
+  if (node.standings?.entries) {
+    const found = node.standings.entries.some((e) => e.team?.id === teamId);
+    if (found) return { name: node.name || node.abbreviation || '', entries: node.standings.entries };
+  }
+  for (const child of (node.children || [])) {
+    const result = findStandingsGroup(child, teamId);
+    if (result) return result;
+  }
+  return null;
+}
+
+function extractStandingsGroup(data, teamId, sport) {
+  if (!data) return null;
+  const group = findStandingsGroup(data, teamId);
+  if (!group) return null;
+
+  const usePts = sport === 'hockey' || sport === 'soccer';
+
+  const entries = group.entries.map((entry) => {
+    const statsMap = {};
+    for (const s of (entry.stats || [])) statsMap[s.name] = s.value;
+
+    const wins = statsMap.wins ?? statsMap.gamesWon ?? 0;
+    const losses = statsMap.losses ?? statsMap.gamesLost ?? 0;
+    const ties = statsMap.ties ?? statsMap.gamesTied ?? statsMap.overtimeLosses ?? null;
+    const pct = statsMap.winPercent != null
+      ? Number(statsMap.winPercent).toFixed(3).replace(/^0/, '')
+      : null;
+    const pts = statsMap.points != null ? Math.round(statsMap.points) : null;
+    const gb = statsMap.gamesBehind != null ? statsMap.gamesBehind : null;
+
+    return {
+      teamId: entry.team?.id,
+      abbr: entry.team?.abbreviation,
+      name: entry.team?.displayName,
+      logo: entry.team?.logos?.[0]?.href || null,
+      wins: Math.round(wins),
+      losses: Math.round(losses),
+      ties: ties != null ? Math.round(ties) : null,
+      pct,
+      pts,
+      gb,
+      usePts,
+    };
+  });
+
+  return { groupName: group.name, entries };
 }
 
 export async function fetchGames(leagueKey) {

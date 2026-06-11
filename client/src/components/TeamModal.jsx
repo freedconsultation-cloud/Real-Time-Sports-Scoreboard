@@ -58,6 +58,83 @@ function GameRow({ game, isUpcoming }) {
   )
 }
 
+function SectionHeader({ label }) {
+  return (
+    <div className="px-4 py-2.5 sticky top-0 z-10" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>{label}</p>
+    </div>
+  )
+}
+
+function StandingsTable({ standings, activeTeamId }) {
+  if (!standings) return null
+  const { groupName, entries } = standings
+  const usePts = entries[0]?.usePts
+
+  return (
+    <section>
+      <SectionHeader label={groupName || 'Standings'} />
+      <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted)' }}>
+            <th className="text-left px-4 py-1.5 font-semibold w-8">#</th>
+            <th className="text-left px-2 py-1.5 font-semibold">Team</th>
+            <th className="text-center px-2 py-1.5 font-semibold">W</th>
+            <th className="text-center px-2 py-1.5 font-semibold">L</th>
+            {entries.some((e) => e.ties != null) && (
+              <th className="text-center px-2 py-1.5 font-semibold">
+                {usePts ? 'OTL' : 'T'}
+              </th>
+            )}
+            <th className="text-center px-2 py-1.5 font-semibold">
+              {usePts ? 'PTS' : 'PCT'}
+            </th>
+            <th className="text-center px-2 py-1.5 font-semibold">GB</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((e, i) => {
+            const isActive = String(e.teamId) === String(activeTeamId)
+            return (
+              <tr
+                key={e.teamId}
+                style={{
+                  borderBottom: '1px solid var(--border)',
+                  background: isActive ? 'var(--accent)18' : 'transparent',
+                  fontWeight: isActive ? 700 : 400,
+                }}
+              >
+                <td className="px-4 py-2 tabular-nums" style={{ color: 'var(--muted)' }}>{i + 1}</td>
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-2">
+                    {e.logo && <img src={e.logo} alt={e.abbr} className="w-5 h-5 object-contain shrink-0" />}
+                    <span className="truncate" style={{ color: isActive ? 'var(--accent)' : 'var(--fg)' }}>
+                      {e.abbr}
+                    </span>
+                  </div>
+                </td>
+                <td className="text-center px-2 py-2 tabular-nums" style={{ color: 'var(--fg)' }}>{e.wins}</td>
+                <td className="text-center px-2 py-2 tabular-nums" style={{ color: 'var(--fg)' }}>{e.losses}</td>
+                {entries.some((x) => x.ties != null) && (
+                  <td className="text-center px-2 py-2 tabular-nums" style={{ color: 'var(--fg)' }}>
+                    {e.ties ?? '–'}
+                  </td>
+                )}
+                <td className="text-center px-2 py-2 tabular-nums" style={{ color: 'var(--fg)' }}>
+                  {usePts ? (e.pts ?? '–') : (e.pct ?? '–')}
+                </td>
+                <td className="text-center px-2 py-2 tabular-nums" style={{ color: 'var(--muted)' }}>
+                  {e.gb != null ? (e.gb === 0 ? '–' : e.gb) : '–'}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
 export default function TeamModal({ league, teamId, teamName, onClose }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -133,14 +210,15 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
 
           {profile && (
             <>
+              {/* Standings */}
+              {profile.standings && (
+                <StandingsTable standings={profile.standings} activeTeamId={teamId} />
+              )}
+
               {/* Upcoming games */}
               {profile.upcomingGames.length > 0 && (
                 <section>
-                  <div className="px-4 py-2.5 sticky top-0" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-                      Upcoming
-                    </p>
-                  </div>
+                  <SectionHeader label="Upcoming" />
                   {profile.upcomingGames.map((g) => (
                     <GameRow key={g.id} game={g} isUpcoming />
                   ))}
@@ -150,18 +228,14 @@ export default function TeamModal({ league, teamId, teamName, onClose }) {
               {/* Recent results */}
               {profile.pastGames.length > 0 && (
                 <section>
-                  <div className="px-4 py-2.5 sticky top-0" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-                      Recent Results
-                    </p>
-                  </div>
+                  <SectionHeader label="Recent Results" />
                   {profile.pastGames.map((g) => (
                     <GameRow key={g.id} game={g} isUpcoming={false} />
                   ))}
                 </section>
               )}
 
-              {profile.upcomingGames.length === 0 && profile.pastGames.length === 0 && (
+              {profile.upcomingGames.length === 0 && profile.pastGames.length === 0 && !profile.standings && (
                 <p className="text-sm text-center py-12" style={{ color: 'var(--muted)' }}>No schedule data available.</p>
               )}
             </>
