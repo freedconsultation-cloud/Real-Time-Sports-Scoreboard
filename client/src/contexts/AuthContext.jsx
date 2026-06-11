@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined) // undefined = loading
 
   useEffect(() => {
+    if (!auth) { setUser(null); return }
     const unsub = onAuthStateChanged(auth, setUser)
     return unsub
   }, [])

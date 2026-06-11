@@ -2,44 +2,55 @@ import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 
-// Replace with your Firebase project config from console.firebase.google.com
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'YOUR_API_KEY',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'YOUR_AUTH_DOMAIN',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || 'YOUR_SENDER_ID',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || 'YOUR_APP_ID',
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY
+const configured = apiKey && !apiKey.startsWith('YOUR_')
+
+let auth = null
+let db = null
+
+if (configured) {
+  const app = initializeApp({
+    apiKey,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  })
+  auth = getAuth(app)
+  db = getFirestore(app)
 }
 
-const app = initializeApp(firebaseConfig)
-export const auth = getAuth(app)
-export const db = getFirestore(app)
-export const googleProvider = new GoogleAuthProvider()
+export { auth, db }
 
 export async function signInWithGoogle() {
-  return signInWithPopup(auth, googleProvider)
+  if (!auth) throw new Error('Firebase not configured')
+  return signInWithPopup(auth, new GoogleAuthProvider())
 }
 
 export async function signInWithEmail(email, password) {
+  if (!auth) throw new Error('Firebase not configured')
   return signInWithEmailAndPassword(auth, email, password)
 }
 
 export async function registerWithEmail(email, password) {
+  if (!auth) throw new Error('Firebase not configured')
   return createUserWithEmailAndPassword(auth, email, password)
 }
 
 export async function logout() {
+  if (!auth) return
   return signOut(auth)
 }
 
-// Firestore helpers for favorites
 export async function getFavorites(uid) {
+  if (!db) return []
   const snap = await getDoc(doc(db, 'users', uid))
   return snap.exists() ? (snap.data().favorites || []) : []
 }
 
 export async function addFavorite(uid, teamId) {
+  if (!db) return
   const ref = doc(db, 'users', uid)
   const snap = await getDoc(ref)
   if (snap.exists()) {
@@ -50,6 +61,7 @@ export async function addFavorite(uid, teamId) {
 }
 
 export async function removeFavorite(uid, teamId) {
+  if (!db) return
   const ref = doc(db, 'users', uid)
   await updateDoc(ref, { favorites: arrayRemove(teamId) })
 }
