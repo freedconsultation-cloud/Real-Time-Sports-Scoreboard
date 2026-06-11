@@ -110,7 +110,7 @@ export default function App() {
                 initialLeague={league !== 'favorites' ? league : 'nba'}
               />
             )}
-            {showCompare && <PlayerCompare onClose={() => setShowCompare(false)} />
+            {showCompare && <PlayerCompare onClose={() => setShowCompare(false)} />}
           </div>
         </SocketProvider>
       </FavoritesProvider>
