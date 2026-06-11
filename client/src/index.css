@@ -43,6 +43,12 @@ body {
 /* Sticky table cells — needs -webkit prefix for iOS Safari */
 .sticky-col { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; }
 
+/* Live ticker infinite scroll */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

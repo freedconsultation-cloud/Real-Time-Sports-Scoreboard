@@ -6,7 +6,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications'
 import AuthModal from './AuthModal'
 import TeamSearch from './TeamSearch'
 
-export default function Nav() {
+export default function Nav({ onPlayerSearch }) {
   const { user } = useAuth()
   const { connected } = useSocket()
   const { supported: pushSupported, subscribed, permission, loading: pushLoading, enable, disable } = usePushNotifications()
@@ -47,6 +47,15 @@ export default function Nav() {
             title="Search teams"
           >
             🔍
+          </button>
+
+          <button
+            onClick={onPlayerSearch}
+            className="text-sm px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+            title="Player stats"
+          >
+            👤
           </button>
 
           {pushSupported && permission !== 'denied' && (

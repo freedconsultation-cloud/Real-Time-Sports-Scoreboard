@@ -5,7 +5,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fetchGames, fetchTeams, fetchTeamProfile, fetchBoxScore, detectEvents, LEAGUES } from './sports.js';
+import { fetchGames, fetchTeams, fetchTeamProfile, fetchBoxScore, detectEvents, LEAGUES, fetchLeagueStandings, fetchLeaders, fetchHeadToHead, searchPlayers, fetchPlayerStats, fetchWinProbability } from './sports.js';
 
 // Dynamic import so a missing/broken web-push package can't crash the server
 let webpush = null;
@@ -84,6 +84,84 @@ app.get('/api/games/:league/:gameId/boxscore', async (req, res) => {
   try {
     const data = await fetchBoxScore(league, gameId);
     if (!data) return res.status(404).json({ error: 'No box score available' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/standings/:league', async (req, res) => {
+  const { league } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    const groups = await fetchLeagueStandings(league);
+    if (!groups) return res.status(404).json({ error: 'No standings available' });
+    res.json(groups);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/leaders/:league', async (req, res) => {
+  const { league } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    const leaders = await fetchLeaders(league);
+    res.json(leaders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/h2h/:league/:team1Id/:team2Id', async (req, res) => {
+  const { league, team1Id, team2Id } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    const meetings = await fetchHeadToHead(league, team1Id, team2Id);
+    res.json(meetings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/players/search', async (req, res) => {
+  const { q, league } = req.query;
+  if (!q || q.length < 3) return res.json([]);
+  if (league && !LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    if (league) {
+      res.json(await searchPlayers(league, q));
+    } else {
+      const results = await Promise.allSettled(Object.keys(LEAGUES).map((l) => searchPlayers(l, q)));
+      const combined = results
+        .flatMap((r) => r.status === 'fulfilled' ? r.value : [])
+        .filter((p, i, arr) => arr.findIndex((x) => x.id === p.id && x.league === p.league) === i)
+        .slice(0, 20);
+      res.json(combined);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/players/:league/:athleteId', async (req, res) => {
+  const { league, athleteId } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    const profile = await fetchPlayerStats(league, athleteId);
+    if (!profile) return res.status(404).json({ error: 'Player not found' });
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/games/:league/:gameId/winprob', async (req, res) => {
+  const { league, gameId } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    const data = await fetchWinProbability(league, gameId);
+    if (!data) return res.status(404).json({ error: 'No win probability data' });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });

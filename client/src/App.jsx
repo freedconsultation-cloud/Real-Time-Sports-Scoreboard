@@ -7,11 +7,23 @@ import SportTabs from './components/SportTabs'
 import Scoreboard from './components/Scoreboard'
 import Notifications from './components/Notifications'
 import AuthModal from './components/AuthModal'
+import LiveTicker from './components/LiveTicker'
+import TopPerformers from './components/TopPerformers'
+import StandingsModal from './components/StandingsModal'
+import PlayerModal from './components/PlayerModal'
+
+const LEAGUE_LABELS = {
+  nfl: 'NFL', nba: 'NBA', mlb: 'MLB', nhl: 'NHL',
+  soccer: 'Premier League', worldcup: 'World Cup',
+  ncaaf: 'CFB', ncaab: 'NCAAB', ncaaw: 'NCAAW',
+}
 
 export default function App() {
   const [league, setLeague] = useState('nfl')
   const [events, setEvents] = useState([])
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showStandings, setShowStandings] = useState(false)
+  const [showPlayerModal, setShowPlayerModal] = useState(false)
 
   const handleKeyEvent = useCallback((event) => {
     const id = `${Date.now()}-${Math.random()}`
@@ -25,25 +37,60 @@ export default function App() {
   return (
     <AuthProvider>
       <FavoritesProvider>
-      <SocketProvider onKeyEvent={handleKeyEvent}>
-        <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-          <Nav />
+        <SocketProvider onKeyEvent={handleKeyEvent}>
+          <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+            <Nav onPlayerSearch={() => setShowPlayerModal(true)} />
+            <LiveTicker />
 
-          <main className="max-w-6xl mx-auto px-4 py-4">
-            <SportTabs active={league} onChange={setLeague} />
-            <div className="mt-4">
-              <Scoreboard
+            <main className="max-w-6xl mx-auto px-4 py-4">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <SportTabs active={league} onChange={(l) => { setLeague(l); setShowStandings(false) }} />
+                </div>
+                {league !== 'favorites' && (
+                  <button
+                    onClick={() => setShowStandings(true)}
+                    className="text-xs px-3 py-2 rounded-lg shrink-0 font-semibold transition-colors"
+                    style={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--muted)',
+                    }}
+                    title="View standings"
+                  >
+                    📊
+                    <span className="hidden sm:inline ml-1">Standings</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-4">
+                {league !== 'favorites' && <TopPerformers league={league} />}
+                <Scoreboard
+                  league={league}
+                  onAuthRequired={() => setShowAuthModal(true)}
+                />
+              </div>
+            </main>
+
+            <Notifications events={events} onDismiss={dismissEvent} />
+
+            {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+            {showStandings && (
+              <StandingsModal
                 league={league}
-                onAuthRequired={() => setShowAuthModal(true)}
+                leagueLabel={LEAGUE_LABELS[league] || league.toUpperCase()}
+                onClose={() => setShowStandings(false)}
               />
-            </div>
-          </main>
-
-          <Notifications events={events} onDismiss={dismissEvent} />
-
-          {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-        </div>
-      </SocketProvider>
+            )}
+            {showPlayerModal && (
+              <PlayerModal
+                onClose={() => setShowPlayerModal(false)}
+                initialLeague={league !== 'favorites' ? league : 'nba'}
+              />
+            )}
+          </div>
+        </SocketProvider>
       </FavoritesProvider>
     </AuthProvider>
   )

@@ -345,6 +345,216 @@ export async function fetchBoxScore(leagueKey, gameId) {
   }
 }
 
+// ── Full league standings ──────────────────────────────────────
+
+function collectAllGroups(node, usePts, groups) {
+  if (node.standings?.entries?.length) {
+    groups.push({
+      name: node.name || node.abbreviation || '',
+      entries: node.standings.entries.map((entry) => {
+        const sm = {};
+        for (const s of (entry.stats || [])) sm[s.name] = s.value;
+        const wins = sm.wins ?? sm.gamesWon ?? 0;
+        const losses = sm.losses ?? sm.gamesLost ?? 0;
+        const ties = sm.ties ?? sm.gamesTied ?? sm.overtimeLosses ?? null;
+        const pct = sm.winPercent != null ? Number(sm.winPercent).toFixed(3).replace(/^0/, '') : null;
+        const pts = sm.points != null ? Math.round(sm.points) : null;
+        const gb = sm.gamesBehind != null ? sm.gamesBehind : null;
+        return {
+          teamId: entry.team?.id,
+          abbr: entry.team?.abbreviation,
+          name: entry.team?.displayName,
+          logo: entry.team?.logos?.[0]?.href || null,
+          wins: Math.round(wins),
+          losses: Math.round(losses),
+          ties: ties != null ? Math.round(ties) : null,
+          pct, pts, gb, usePts,
+        };
+      }),
+    });
+  }
+  for (const child of (node.children || [])) collectAllGroups(child, usePts, groups);
+}
+
+export async function fetchLeagueStandings(leagueKey) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return null;
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/standings`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const usePts = meta.sport === 'hockey' || meta.sport === 'soccer';
+    const groups = [];
+    collectAllGroups(data, usePts, groups);
+    return groups.length ? groups : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Statistical leaders ────────────────────────────────────────
+
+export async function fetchLeaders(leagueKey) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return [];
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/leaders`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.categories || []).slice(0, 8).map((cat) => ({
+      category: cat.displayName || cat.name,
+      leaders: (cat.leaders || []).slice(0, 5).map((l) => ({
+        name: l.athlete?.displayName,
+        teamAbbr: l.team?.abbreviation,
+        teamColor: l.team?.color ? `#${l.team.color}` : null,
+        logo: l.team?.logos?.[0]?.href || null,
+        headshot: l.athlete?.headshot?.href || null,
+        value: l.displayValue,
+        athleteId: l.athlete?.id,
+      })),
+    })).filter((c) => c.leaders.length > 0 && c.leaders[0].name);
+  } catch {
+    return [];
+  }
+}
+
+// ── Head-to-head history ───────────────────────────────────────
+
+export async function fetchHeadToHead(leagueKey, team1Id, team2Id) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return [];
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/teams/${team1Id}/schedule`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.events || [])
+      .filter((event) => {
+        const comp = event.competitions?.[0];
+        return comp?.status?.type?.completed &&
+          comp.competitors?.some((c) => c.team?.id === String(team2Id));
+      })
+      .reverse()
+      .slice(0, 10)
+      .map((event) => {
+        const comp = event.competitions?.[0];
+        const t1 = comp.competitors.find((c) => c.team?.id === String(team1Id));
+        const t2 = comp.competitors.find((c) => c.team?.id === String(team2Id));
+        return {
+          date: event.date,
+          season: event.season?.year,
+          t1Abbr: t1?.team?.abbreviation,
+          t2Abbr: t2?.team?.abbreviation,
+          t1Score: Number(t1?.score || 0),
+          t2Score: Number(t2?.score || 0),
+          t1Won: !!t1?.winner,
+          t1Home: t1?.homeAway === 'home',
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+// ── Player search & stats ──────────────────────────────────────
+
+export async function searchPlayers(leagueKey, query) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return [];
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/athletes?active=true&limit=20&search=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const raw = data.athletes || data.items || [];
+    return raw.slice(0, 10).map((a) => ({
+      id: a.id,
+      name: a.displayName || `${a.firstName || ''} ${a.lastName || ''}`.trim(),
+      position: a.position?.abbreviation || '',
+      team: a.team?.shortDisplayName || a.team?.displayName || '',
+      teamAbbr: a.team?.abbreviation || '',
+      teamColor: a.team?.color ? `#${a.team.color}` : null,
+      logo: a.team?.logos?.[0]?.href || null,
+      headshot: a.headshot?.href || null,
+      jersey: a.jersey || '',
+      league: leagueKey,
+    })).filter((a) => a.name);
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchPlayerStats(leagueKey, athleteId) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return null;
+  try {
+    const [bioRes, statsRes] = await Promise.allSettled([
+      fetch(`${ESPN_BASE}/${meta.sport}/${meta.league}/athletes/${athleteId}`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${ESPN_BASE}/${meta.sport}/${meta.league}/athletes/${athleteId}/statistics`, { signal: AbortSignal.timeout(8000) }),
+    ]);
+    const bioData = bioRes.status === 'fulfilled' && bioRes.value.ok ? await bioRes.value.json() : null;
+    const statsData = statsRes.status === 'fulfilled' && statsRes.value.ok ? await statsRes.value.json() : null;
+    const a = bioData?.athlete;
+    if (!a) return null;
+    const categories = (statsData?.statistics?.splits?.categories || []).map((cat) => ({
+      name: cat.displayName || cat.name,
+      stats: (cat.stats || []).map((s, i) => ({
+        label: (cat.labels || cat.names || [])[i] || s.name || '',
+        value: s.displayValue || String(s.value ?? ''),
+      })).filter((s) => s.label && s.value && s.value !== '--'),
+    })).filter((c) => c.stats.length > 0);
+    return {
+      id: a.id,
+      name: a.displayName,
+      position: a.position?.displayName || '',
+      jersey: a.jersey || '',
+      team: a.team?.displayName || '',
+      teamAbbr: a.team?.abbreviation || '',
+      teamColor: a.team?.color ? `#${a.team.color}` : null,
+      logo: a.team?.logos?.[0]?.href || null,
+      headshot: a.headshot?.href || null,
+      height: a.displayHeight || '',
+      weight: a.displayWeight || '',
+      age: a.age || null,
+      experience: a.experience?.displayValue || '',
+      categories,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── Win probability ────────────────────────────────────────────
+
+export async function fetchWinProbability(leagueKey, gameId) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return null;
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/summary?event=${gameId}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const wpArr = data.winprobability || data.winProbability || [];
+    const latest = wpArr[wpArr.length - 1];
+    let homeWinPct = typeof latest?.homeWinPercentage === 'number'
+      ? Math.round(latest.homeWinPercentage * 100)
+      : null;
+    if (homeWinPct === null) {
+      const pc = data.pickcenter?.[0];
+      const raw = pc?.homeTeamOdds?.winPercentage;
+      if (raw != null) {
+        const n = Number(raw);
+        homeWinPct = Math.round(n > 1 ? n : n * 100);
+      }
+    }
+    return homeWinPct != null ? { homeWinPct, awayWinPct: 100 - homeWinPct } : null;
+  } catch {
+    return null;
+  }
+}
+
 // Detect meaningful score changes between two snapshots
 export function detectEvents(oldGames, newGames) {
   const events = [];
