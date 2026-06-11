@@ -36,7 +36,7 @@ function normalizeGame(event, leagueKey) {
   const lastPlay = comp.situation?.lastPlay?.text || comp.notes?.[0]?.headline || '';
 
   const leagueMeta = LEAGUES[leagueKey];
-  const periodLabel = getPeriodLabel(period, leagueMeta?.sport, status, event.status?.type?.description);
+  const periodLabel = getPeriodLabel(period, leagueMeta?.sport, status, event.status?.type?.description, event.status?.type?.detail);
 
   return {
     id: event.id,
@@ -71,15 +71,19 @@ function normalizeGame(event, leagueKey) {
   };
 }
 
-function getPeriodLabel(period, sport, status, description) {
+function getPeriodLabel(period, sport, status, description, detail) {
   if (status === 'final') return description || 'Final';
   if (status === 'scheduled') return '';
   if (!period) return description || 'Live';
   if (sport === 'football') return `Q${period}`;
   if (sport === 'basketball') return `Q${period}`;
-  if (sport === 'baseball') return `Inn. ${period}`;
   if (sport === 'hockey') return `P${period}`;
   if (sport === 'soccer') return description || 'Live';
+  if (sport === 'baseball') {
+    const d = (detail || '').toLowerCase();
+    const arrow = d.startsWith('top') ? '▲' : d.startsWith('bottom') ? '▼' : '—';
+    return `${arrow} Inning ${period}`;
+  }
   return `${period}`;
 }
 
