@@ -21,6 +21,14 @@ export default function Nav({ onPlayerSearch, onCompare }) {
         style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}
       >
         <div className="flex items-center gap-3">
+          <a
+            href="https://freed-projects.vercel.app"
+            className="text-xs opacity-50 hover:opacity-100 transition-opacity"
+            style={{ color: 'var(--muted)' }}
+            title="Back to portfolio"
+          >
+            ← Portfolio
+          </a>
           <h1 className="text-base font-black tracking-tight" style={{ color: 'var(--fg)' }}>
             ScoreStream
           </h1>
