@@ -5,16 +5,33 @@ const SocketContext = createContext(null)
 
 import { SERVER_URL } from '../config.js'
 
+const ALL_LEAGUES = ['nfl', 'nba', 'mlb', 'nhl', 'soccer', 'worldcup', 'ncaaf', 'ncaab', 'ncaaw']
+
 export function SocketProvider({ children, onKeyEvent }) {
   const socketRef = useRef(null)
   const [connected, setConnected] = useState(false)
   const [gamesByLeague, setGamesByLeague] = useState({})
+  const seededRef = useRef(false)
 
   useEffect(() => {
     const socket = io(SERVER_URL, { transports: ['websocket', 'polling'] })
     socketRef.current = socket
 
-    socket.on('connect', () => setConnected(true))
+    socket.on('connect', () => {
+      setConnected(true)
+      if (!seededRef.current) {
+        seededRef.current = true
+        ALL_LEAGUES.forEach(async (l) => {
+          try {
+            const res = await fetch(`${SERVER_URL}/api/games/${l}`)
+            if (res.ok) {
+              const games = await res.json()
+              setGamesByLeague((prev) => ({ ...prev, [l]: games }))
+            }
+          } catch {}
+        })
+      }
+    })
     socket.on('disconnect', () => setConnected(false))
 
     socket.on('games:update', ({ league, games }) => {
