@@ -1,9 +1,13 @@
 const LEAGUES = [
-  { key: 'nfl', label: 'NFL', emoji: '🏈' },
-  { key: 'nba', label: 'NBA', emoji: '🏀' },
-  { key: 'mlb', label: 'MLB', emoji: '⚾' },
-  { key: 'nhl', label: 'NHL', emoji: '🏒' },
-  { key: 'soccer', label: 'Soccer', emoji: '⚽' },
+  { key: 'nfl',      label: 'NFL',            emoji: '🏈' },
+  { key: 'nba',      label: 'NBA',            emoji: '🏀' },
+  { key: 'mlb',      label: 'MLB',            emoji: '⚾' },
+  { key: 'nhl',      label: 'NHL',            emoji: '🏒' },
+  { key: 'soccer',   label: 'Premier League', emoji: '⚽' },
+  { key: 'worldcup', label: 'World Cup',      emoji: '🏆' },
+  { key: 'ncaaf',    label: 'CFB',            emoji: '🏟️' },
+  { key: 'ncaab',    label: 'NCAAB',          emoji: '🏀' },
+  { key: 'ncaaw',    label: 'NCAAW',          emoji: '🏀' },
 ]
 
 export default function SportTabs({ active, onChange }) {

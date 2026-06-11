@@ -2,11 +2,15 @@
 const ESPN_BASE = 'http://site.api.espn.com/apis/site/v2/sports';
 
 export const LEAGUES = {
-  nfl:    { sport: 'football',   league: 'nfl',   label: 'NFL',      emoji: '🏈' },
-  nba:    { sport: 'basketball', league: 'nba',   label: 'NBA',      emoji: '🏀' },
-  mlb:    { sport: 'baseball',   league: 'mlb',   label: 'MLB',      emoji: '⚾' },
-  nhl:    { sport: 'hockey',     league: 'nhl',   label: 'NHL',      emoji: '🏒' },
-  soccer: { sport: 'soccer',     league: 'eng.1', label: 'Premier League', emoji: '⚽' },
+  nfl:    { sport: 'football',   league: 'nfl',                       label: 'NFL',            emoji: '🏈' },
+  nba:    { sport: 'basketball', league: 'nba',                       label: 'NBA',            emoji: '🏀' },
+  mlb:    { sport: 'baseball',   league: 'mlb',                       label: 'MLB',            emoji: '⚾' },
+  nhl:    { sport: 'hockey',     league: 'nhl',                       label: 'NHL',            emoji: '🏒' },
+  soccer: { sport: 'soccer',     league: 'eng.1',                     label: 'Premier League', emoji: '⚽' },
+  worldcup: { sport: 'soccer',   league: 'fifa.world',                label: 'World Cup',      emoji: '🏆' },
+  ncaaf:  { sport: 'football',   league: 'college-football',          label: 'CFB',            emoji: '🏟️' },
+  ncaab:  { sport: 'basketball', league: 'mens-college-basketball',   label: 'NCAAB',          emoji: '🏀' },
+  ncaaw:  { sport: 'basketball', league: 'womens-college-basketball', label: 'NCAAW',          emoji: '🏀' },
 };
 
 function normalizeStatus(espnStatus) {
