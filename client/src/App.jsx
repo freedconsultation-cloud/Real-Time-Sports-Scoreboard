@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
 import { SocketProvider } from './contexts/SocketContext'
 import { FavoritesProvider } from './contexts/FavoritesContext'
@@ -8,6 +8,7 @@ import Scoreboard from './components/Scoreboard'
 import Notifications from './components/Notifications'
 import AuthModal from './components/AuthModal'
 import LiveTicker from './components/LiveTicker'
+import { SERVER_URL } from './config.js'
 import TopPerformers from './components/TopPerformers'
 import StandingsModal from './components/StandingsModal'
 import PlayerModal from './components/PlayerModal'
@@ -24,6 +25,16 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showStandings, setShowStandings] = useState(false)
   const [showPlayerModal, setShowPlayerModal] = useState(false)
+  const [standingsAvailable, setStandingsAvailable] = useState(false)
+
+  useEffect(() => {
+    if (league === 'favorites') { setStandingsAvailable(false); return }
+    setStandingsAvailable(false)
+    fetch(`${SERVER_URL}/api/standings/${league}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setStandingsAvailable(Array.isArray(data) && data.length > 0))
+      .catch(() => setStandingsAvailable(false))
+  }, [league])
 
   const handleKeyEvent = useCallback((event) => {
     const id = `${Date.now()}-${Math.random()}`
@@ -47,7 +58,7 @@ export default function App() {
                 <div className="flex-1 min-w-0">
                   <SportTabs active={league} onChange={(l) => { setLeague(l); setShowStandings(false) }} />
                 </div>
-                {league !== 'favorites' && (
+                {standingsAvailable && (
                   <button
                     onClick={() => setShowStandings(true)}
                     className="text-xs px-3 py-2 rounded-lg shrink-0 font-semibold transition-colors"
