@@ -41,14 +41,16 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
   const isFinal = game.status === 'final'
   const homeWins = isFinal && game.homeTeam.score > game.awayTeam.score
   const awayWins = isFinal && game.awayTeam.score > game.homeTeam.score
-  const homeIsFav = isFavorite(game.homeTeam.id)
-  const awayIsFav = isFavorite(game.awayTeam.id)
+  const homeFavId = `${game.league}-${game.homeTeam.id}`
+  const awayFavId = `${game.league}-${game.awayTeam.id}`
+  const homeIsFav = isFavorite(homeFavId)
+  const awayIsFav = isFavorite(awayFavId)
   const isHighlighted = homeIsFav || awayIsFav
 
-  function handleFav(e, teamId) {
+  function handleFav(e, favId) {
     e.stopPropagation()
     if (!user) { onAuthRequired?.(); return }
-    toggle(teamId)
+    toggle(favId)
   }
 
   return (
@@ -81,7 +83,7 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
           <button
             className="ml-1 text-base opacity-40 hover:opacity-100 transition-opacity shrink-0"
             style={{ color: awayIsFav ? 'var(--accent)' : 'var(--muted)' }}
-            onClick={(e) => handleFav(e, game.awayTeam.id)}
+            onClick={(e) => handleFav(e, awayFavId)}
             title={awayIsFav ? 'Remove favorite' : 'Add to favorites'}
           >
             {awayIsFav ? '★' : '☆'}
@@ -92,7 +94,7 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
           <button
             className="ml-1 text-base opacity-40 hover:opacity-100 transition-opacity shrink-0"
             style={{ color: homeIsFav ? 'var(--accent)' : 'var(--muted)' }}
-            onClick={(e) => handleFav(e, game.homeTeam.id)}
+            onClick={(e) => handleFav(e, homeFavId)}
             title={homeIsFav ? 'Remove favorite' : 'Add to favorites'}
           >
             {homeIsFav ? '★' : '☆'}

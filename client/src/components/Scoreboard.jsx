@@ -116,7 +116,9 @@ export default function Scoreboard({ league, onAuthRequired }) {
     }
 
     const favGames = ALL_LEAGUES.flatMap((l) =>
-      (gamesByLeague[l] || []).filter((g) => isFavorite(g.homeTeam.id) || isFavorite(g.awayTeam.id))
+      (gamesByLeague[l] || []).filter((g) =>
+        isFavorite(`${g.league}-${g.homeTeam.id}`) || isFavorite(`${g.league}-${g.awayTeam.id}`)
+      )
     )
 
     if (!favGames.length) {

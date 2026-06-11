@@ -32,11 +32,6 @@ export default function TeamSearch({ onClose, onAuthRequired }) {
     t.leagueLabel.toLowerCase().includes(query.toLowerCase())
   ).slice(0, 20)
 
-  function handleToggle(team) {
-    if (!user) { onClose(); onAuthRequired(); return }
-    toggle(team.id)
-  }
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4"
@@ -82,10 +77,11 @@ export default function TeamSearch({ onClose, onAuthRequired }) {
           )}
 
           {filtered.map((team) => {
-            const fav = isFavorite(team.id)
+            const favId = `${team.league}-${team.id}`
+            const fav = isFavorite(favId)
             return (
               <div
-                key={`${team.league}-${team.id}`}
+                key={favId}
                 className="flex items-center gap-3 px-4 py-3 transition-colors hover:opacity-80"
                 style={{ borderBottom: '1px solid var(--border)' }}
               >
@@ -106,7 +102,7 @@ export default function TeamSearch({ onClose, onAuthRequired }) {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleToggle(team)}
+                  onClick={() => { if (!user) { onClose(); onAuthRequired(); return } toggle(favId) }}
                   className="text-xl shrink-0 transition-transform hover:scale-110"
                   style={{ color: fav ? 'var(--accent)' : 'var(--muted)' }}
                   title={fav ? 'Remove favorite' : 'Add to favorites'}
