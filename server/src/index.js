@@ -5,15 +5,22 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import webpush from 'web-push';
 import { fetchGames, fetchTeams, fetchTeamProfile, fetchBoxScore, detectEvents, LEAGUES } from './sports.js';
 
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    process.env.VAPID_EMAIL || 'mailto:example@example.com',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  );
+// Dynamic import so a missing/broken web-push package can't crash the server
+let webpush = null;
+try {
+  webpush = (await import('web-push')).default;
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL || 'mailto:example@example.com',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY,
+    );
+    console.log('Push notifications enabled');
+  }
+} catch (e) {
+  console.warn('web-push unavailable, push notifications disabled:', e.message);
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -106,6 +113,7 @@ app.get('/api/push/vapid-public-key', (_, res) => {
 });
 
 async function sendPush(subscription, payload) {
+  if (!webpush) return;
   try {
     await webpush.sendNotification(subscription, JSON.stringify(payload));
   } catch (err) {
@@ -164,7 +172,7 @@ async function pollLeague(league) {
   for (const event of events) {
     io.emit('key:event', event);
 
-    if (event.type === 'score' && pushSubscriptions.size > 0 && process.env.VAPID_PUBLIC_KEY) {
+    if (event.type === 'score' && webpush && pushSubscriptions.size > 0 && process.env.VAPID_PUBLIC_KEY) {
       const favKey = `${event.league}-${event.teamId}`;
       const emoji = LEAGUES[event.league]?.emoji || '🏆';
       const payload = {
