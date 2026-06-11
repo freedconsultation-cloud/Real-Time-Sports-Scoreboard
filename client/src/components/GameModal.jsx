@@ -223,20 +223,22 @@ export default function GameModal({ game, onClose }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="flex-1 py-2.5 text-xs font-semibold relative"
-              style={{ color: tab === t ? 'var(--accent)' : 'var(--muted)' }}
-            >
-              {t}
-              {tab === t && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
-              )}
-            </button>
-          ))}
+        <div className="overflow-x-auto scrollbar-hide border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex min-w-max">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="shrink-0 px-4 py-2.5 text-xs font-semibold relative"
+                style={{ color: tab === t ? 'var(--accent)' : 'var(--muted)' }}
+              >
+                {t}
+                {tab === t && (
+                  <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Body */}
