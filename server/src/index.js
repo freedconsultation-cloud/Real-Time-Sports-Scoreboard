@@ -5,7 +5,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fetchGames, detectEvents, LEAGUES } from './sports.js';
+import { fetchGames, fetchTeams, detectEvents, LEAGUES } from './sports.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -25,8 +25,14 @@ app.use(express.json());
 const gameCache = {};
 // Commentary feed per game: { [gameId]: string[] }
 const commentaryCache = {};
+// Teams cache: Team[] (all leagues combined, loaded once on startup)
+let teamsCache = [];
 
 // ── REST API ───────────────────────────────────────────────────
+
+app.get('/api/teams', (_, res) => {
+  res.json(teamsCache);
+});
 
 app.get('/api/leagues', (_, res) => {
   res.json(Object.entries(LEAGUES).map(([key, val]) => ({ key, ...val })));
@@ -102,7 +108,15 @@ async function pollAll() {
   await Promise.allSettled(Object.keys(LEAGUES).map(pollLeague));
 }
 
+// Load all teams once on startup (non-blocking)
+async function loadTeams() {
+  const results = await Promise.allSettled(Object.keys(LEAGUES).map(fetchTeams));
+  teamsCache = results.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
+  console.log(`Loaded ${teamsCache.length} teams across all leagues`);
+}
+
 // Initial fetch + recurring poll
+loadTeams();
 pollAll();
 setInterval(pollAll, POLL_INTERVAL);
 

@@ -3,12 +3,14 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSocket } from '../contexts/SocketContext'
 import { logout } from '../firebase'
 import AuthModal from './AuthModal'
+import TeamSearch from './TeamSearch'
 
 export default function Nav({ showFavOnly, onToggleFavOnly }) {
   const { user } = useAuth()
   const { connected } = useSocket()
   const [showAuth, setShowAuth] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
 
   return (
     <>
@@ -36,6 +38,15 @@ export default function Nav({ showFavOnly, onToggleFavOnly }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSearch(true)}
+            className="text-sm px-3 py-1.5 rounded-lg transition-colors"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+            title="Search teams"
+          >
+            🔍
+          </button>
+
           {user && (
             <button
               onClick={onToggleFavOnly}
@@ -91,6 +102,12 @@ export default function Nav({ showFavOnly, onToggleFavOnly }) {
       </nav>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      {showSearch && (
+        <TeamSearch
+          onClose={() => setShowSearch(false)}
+          onAuthRequired={() => { setShowSearch(false); setShowAuth(true) }}
+        />
+      )}
     </>
   )
 }

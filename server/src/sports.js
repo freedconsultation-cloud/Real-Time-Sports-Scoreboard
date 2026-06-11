@@ -97,6 +97,28 @@ function extractLeaders(comp) {
   return leaders;
 }
 
+export async function fetchTeams(leagueKey) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return [];
+  try {
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/teams?limit=200`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const raw = data?.sports?.[0]?.leagues?.[0]?.teams || [];
+    return raw.map(({ team: t }) => ({
+      id: t.id,
+      name: t.displayName,
+      abbr: t.abbreviation,
+      logo: t.logos?.[0]?.href || null,
+      league: leagueKey,
+      leagueLabel: meta.label,
+    })).filter((t) => t.name);
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchGames(leagueKey) {
   const meta = LEAGUES[leagueKey];
   if (!meta) return [];
