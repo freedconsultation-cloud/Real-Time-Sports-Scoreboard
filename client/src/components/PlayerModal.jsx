@@ -112,10 +112,15 @@ export default function PlayerModal({ onClose, initialLeague }) {
   function selectPlayer(p) {
     setLoadingPlayer(true)
     setPlayer(null)
-    fetch(`${SERVER_URL}/api/players/${league}/${p.id}`)
+    // Use the player's own league (from search result), not the tab selection
+    const playerLeague = p.league || league
+    fetch(`${SERVER_URL}/api/players/${playerLeague}/${p.id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then(setPlayer)
-      .catch(() => {})
+      .then((profile) => {
+        // Merge: search result has team name; profile has bio/stats
+        setPlayer(profile ? { team: p.team, leagueLabel: p.leagueLabel, ...profile } : p)
+      })
+      .catch(() => setPlayer(p))
       .finally(() => setLoadingPlayer(false))
   }
 

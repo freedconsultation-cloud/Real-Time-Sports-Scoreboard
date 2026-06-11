@@ -1,5 +1,9 @@
 // ESPN unofficial scoreboard API — no key required
-const ESPN_BASE = 'http://site.api.espn.com/apis/site/v2/sports';
+const ESPN_BASE    = 'http://site.api.espn.com/apis/site/v2/sports';
+const ESPN_V2_BASE = 'http://site.api.espn.com/apis/v2/sports';       // standings
+const ESPN_CORE    = 'http://sports.core.api.espn.com/v2/sports';      // athlete bio
+const ESPN_WEB     = 'https://site.web.api.espn.com/apis/common/v3/sports'; // athlete stats
+const ESPN_SEARCH  = 'http://site.api.espn.com/apis/search/v2';        // player search
 
 export const LEAGUES = {
   nfl:    { sport: 'football',   league: 'nfl',                       label: 'NFL',            emoji: '🏈' },
@@ -380,7 +384,7 @@ export async function fetchLeagueStandings(leagueKey) {
   const meta = LEAGUES[leagueKey];
   if (!meta) return null;
   try {
-    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/standings`;
+    const url = `${ESPN_V2_BASE}/${meta.sport}/${meta.league}/standings`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const data = await res.json();
@@ -426,7 +430,7 @@ export async function fetchHeadToHead(leagueKey, team1Id, team2Id) {
   const meta = LEAGUES[leagueKey];
   if (!meta) return [];
   try {
-    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/teams/${team1Id}/schedule`;
+    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/teams/${team1Id}/schedule?limit=200`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data = await res.json();
@@ -460,27 +464,40 @@ export async function fetchHeadToHead(leagueKey, team1Id, team2Id) {
 
 // ── Player search & stats ──────────────────────────────────────
 
+// ESPN description → our league key
+const SEARCH_LEAGUE_MAP = {
+  NFL: 'nfl', NBA: 'nba', MLB: 'mlb', NHL: 'nhl',
+  NCAAM: 'ncaab', NCAAF: 'ncaaf', NCAAW: 'ncaaw',
+  'College Football': 'ncaaf',
+  "Men's College Basketball": 'ncaab',
+  "Women's College Basketball": 'ncaaw',
+  'Premier League': 'soccer', Soccer: 'soccer', MLS: 'soccer',
+};
+
 export async function searchPlayers(leagueKey, query) {
-  const meta = LEAGUES[leagueKey];
-  if (!meta) return [];
   try {
-    const url = `${ESPN_BASE}/${meta.sport}/${meta.league}/athletes?active=true&limit=20&search=${encodeURIComponent(query)}`;
+    const url = `${ESPN_SEARCH}?query=${encodeURIComponent(query)}&limit=30`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data = await res.json();
-    const raw = data.athletes || data.items || [];
-    return raw.slice(0, 10).map((a) => ({
-      id: a.id,
-      name: a.displayName || `${a.firstName || ''} ${a.lastName || ''}`.trim(),
-      position: a.position?.abbreviation || '',
-      team: a.team?.shortDisplayName || a.team?.displayName || '',
-      teamAbbr: a.team?.abbreviation || '',
-      teamColor: a.team?.color ? `#${a.team.color}` : null,
-      logo: a.team?.logos?.[0]?.href || null,
-      headshot: a.headshot?.href || null,
-      jersey: a.jersey || '',
-      league: leagueKey,
-    })).filter((a) => a.name);
+    const playerGroup = data.results?.find((r) => r.type === 'player');
+    const contents = (playerGroup?.contents || []).filter((c) => c.uid && c.displayName);
+    return contents
+      .map((c) => {
+        const athleteId = c.uid.match(/~a:(\d+)/)?.[1];
+        const league = SEARCH_LEAGUE_MAP[c.description] || null;
+        return {
+          id: athleteId,
+          name: c.displayName,
+          team: c.subtitle || '',
+          teamAbbr: '',
+          league: league || leagueKey,
+          leagueLabel: c.description || '',
+          logo: null, headshot: null, jersey: '', position: '',
+        };
+      })
+      .filter((p) => p.id && (!leagueKey || p.league === leagueKey))
+      .slice(0, 10);
   } catch {
     return [];
   }
@@ -491,34 +508,33 @@ export async function fetchPlayerStats(leagueKey, athleteId) {
   if (!meta) return null;
   try {
     const [bioRes, statsRes] = await Promise.allSettled([
-      fetch(`${ESPN_BASE}/${meta.sport}/${meta.league}/athletes/${athleteId}`, { signal: AbortSignal.timeout(8000) }),
-      fetch(`${ESPN_BASE}/${meta.sport}/${meta.league}/athletes/${athleteId}/statistics`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${ESPN_CORE}/${meta.sport}/leagues/${meta.league}/athletes/${athleteId}?lang=en`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${ESPN_WEB}/${meta.sport}/${meta.league}/athletes/${athleteId}/stats`, { signal: AbortSignal.timeout(8000) }),
     ]);
-    const bioData = bioRes.status === 'fulfilled' && bioRes.value.ok ? await bioRes.value.json() : null;
+    const bio = bioRes.status === 'fulfilled' && bioRes.value.ok ? await bioRes.value.json() : null;
     const statsData = statsRes.status === 'fulfilled' && statsRes.value.ok ? await statsRes.value.json() : null;
-    const a = bioData?.athlete;
-    if (!a) return null;
-    const categories = (statsData?.statistics?.splits?.categories || []).map((cat) => ({
+    if (!bio?.displayName) return null;
+    const categories = (statsData?.categories || []).map((cat) => ({
       name: cat.displayName || cat.name,
-      stats: (cat.stats || []).map((s, i) => ({
-        label: (cat.labels || cat.names || [])[i] || s.name || '',
-        value: s.displayValue || String(s.value ?? ''),
+      stats: (cat.totals || []).map((v, i) => ({
+        label: (cat.labels || cat.names || [])[i] || '',
+        value: v || '',
       })).filter((s) => s.label && s.value && s.value !== '--'),
     })).filter((c) => c.stats.length > 0);
     return {
-      id: a.id,
-      name: a.displayName,
-      position: a.position?.displayName || '',
-      jersey: a.jersey || '',
-      team: a.team?.displayName || '',
-      teamAbbr: a.team?.abbreviation || '',
-      teamColor: a.team?.color ? `#${a.team.color}` : null,
-      logo: a.team?.logos?.[0]?.href || null,
-      headshot: a.headshot?.href || null,
-      height: a.displayHeight || '',
-      weight: a.displayWeight || '',
-      age: a.age || null,
-      experience: a.experience?.displayValue || '',
+      id: bio.id,
+      name: bio.displayName,
+      position: bio.position?.abbreviation || '',
+      jersey: bio.jersey || '',
+      team: '', // filled client-side from search result
+      teamAbbr: '',
+      teamColor: null,
+      logo: null,
+      headshot: bio.headshot?.href || null,
+      height: bio.displayHeight || '',
+      weight: bio.displayWeight || '',
+      age: bio.age || null,
+      experience: bio.experience?.displayValue || '',
       categories,
     };
   } catch {
