@@ -116,20 +116,20 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
     >
       {/* Status bar */}
       <div className="flex items-center justify-between px-3 py-1.5" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-1.5">
-          {isLive && <span className="live-dot" />}
-          <span className="text-[11px] font-semibold" style={{ color: STATUS_COLORS[game.status] }}>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          {isLive && <span className="live-dot shrink-0" />}
+          <span className="text-[11px] font-semibold truncate" style={{ color: STATUS_COLORS[game.status] }}>
             {isLive ? `${game.periodLabel} ${game.clock}`.trim() : isFinal ? 'Final' : formatGameTime(game.startTime)}
           </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
           {game.broadcasts?.length > 0 && (
-            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ background: 'var(--surface)', color: 'var(--fg)', border: '1px solid var(--border)' }}>
-              {game.broadcasts.slice(0, 2).join(' · ')}
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: 'var(--surface)', color: 'var(--fg)', border: '1px solid var(--border)' }}>
+              {game.broadcasts[0]}
             </span>
           )}
           {game.venue && (
-            <span className="text-[10px] truncate max-w-[100px]" style={{ color: 'var(--muted)' }}>{game.venue}</span>
+            <span className="text-[10px] truncate max-w-[80px] hidden sm:block" style={{ color: 'var(--muted)' }}>{game.venue}</span>
           )}
         </div>
       </div>

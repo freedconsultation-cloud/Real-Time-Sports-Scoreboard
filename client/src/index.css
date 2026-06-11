@@ -36,6 +36,13 @@ body {
   50% { opacity: 0.3; }
 }
 
+/* Hide scrollbar while keeping scroll behaviour */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* Sticky table cells — needs -webkit prefix for iOS Safari */
+.sticky-col { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; }
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

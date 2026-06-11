@@ -13,8 +13,8 @@ function StatTable({ category }) {
           <thead>
             <tr style={{ background: 'var(--surface-2)' }}>
               <th
-                className="text-left text-[11px] font-semibold px-3 py-2"
-                style={{ color: 'var(--muted)', minWidth: '130px', position: 'sticky', left: 0, background: 'var(--surface-2)' }}
+                className="sticky-col text-left text-[11px] font-semibold px-3 py-2"
+                style={{ color: 'var(--muted)', minWidth: '130px', background: 'var(--surface-2)' }}
               >
                 Player
               </th>
@@ -36,8 +36,8 @@ function StatTable({ category }) {
                 style={{ borderTop: '1px solid var(--border)' }}
               >
                 <td
-                  className="px-3 py-2"
-                  style={{ position: 'sticky', left: 0, background: 'var(--surface)', minWidth: '130px' }}
+                  className="sticky-col px-3 py-2"
+                  style={{ background: 'var(--surface)', minWidth: '130px' }}
                 >
                   <div className="flex items-center gap-2">
                     {athlete.jersey && (

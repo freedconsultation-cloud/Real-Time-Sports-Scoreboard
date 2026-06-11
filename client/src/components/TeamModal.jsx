@@ -74,11 +74,12 @@ function StandingsTable({ standings, activeTeamId }) {
   return (
     <section>
       <SectionHeader label={groupName || 'Standings'} />
-      <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+      <div className="overflow-x-auto">
+      <table className="w-full text-xs" style={{ borderCollapse: 'collapse', minWidth: '300px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted)' }}>
             <th className="text-left px-4 py-1.5 font-semibold w-8">#</th>
-            <th className="text-left px-2 py-1.5 font-semibold">Team</th>
+            <th className="sticky-col text-left px-2 py-1.5 font-semibold" style={{ background: 'var(--surface)' }}>Team</th>
             <th className="text-center px-2 py-1.5 font-semibold">W</th>
             <th className="text-center px-2 py-1.5 font-semibold">L</th>
             {entries.some((e) => e.ties != null) && (
@@ -105,7 +106,7 @@ function StandingsTable({ standings, activeTeamId }) {
                 }}
               >
                 <td className="px-4 py-2 tabular-nums" style={{ color: 'var(--muted)' }}>{i + 1}</td>
-                <td className="px-2 py-2">
+                <td className="sticky-col px-2 py-2" style={{ background: isActive ? 'var(--surface)' : 'var(--surface)' }}>
                   <div className="flex items-center gap-2">
                     {e.logo && <img src={e.logo} alt={e.abbr} className="w-5 h-5 object-contain shrink-0" />}
                     <span className="truncate" style={{ color: isActive ? 'var(--accent)' : 'var(--fg)' }}>
@@ -131,6 +132,7 @@ function StandingsTable({ standings, activeTeamId }) {
           })}
         </tbody>
       </table>
+      </div>
     </section>
   )
 }

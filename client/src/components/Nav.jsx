@@ -39,10 +39,10 @@ export default function Nav() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => setShowSearch(true)}
-            className="text-sm px-3 py-1.5 rounded-lg transition-colors"
+            className="text-sm px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)' }}
             title="Search teams"
           >
@@ -53,7 +53,7 @@ export default function Nav() {
             <button
               onClick={subscribed ? disable : enable}
               disabled={pushLoading}
-              className="text-sm px-3 py-1.5 rounded-lg transition-colors"
+              className="text-sm px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors"
               style={{
                 background: subscribed ? 'var(--accent)' : 'var(--surface)',
                 border: `1px solid ${subscribed ? 'var(--accent)' : 'var(--border)'}`,
@@ -70,14 +70,14 @@ export default function Nav() {
             <div className="relative">
               <button
                 onClick={() => setShowMenu((v) => !v)}
-                className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg"
+                className="flex items-center gap-1.5 sm:gap-2 text-sm px-2.5 sm:px-3 py-1.5 rounded-lg"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--fg)' }}
               >
                 {user.photoURL
                   ? <img src={user.photoURL} className="w-5 h-5 rounded-full" alt="" />
                   : <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: 'var(--accent)', color: '#000' }}>{user.email?.[0]?.toUpperCase()}</span>
                 }
-                <span className="max-w-[100px] truncate hidden sm:block">{user.displayName || user.email}</span>
+                <span className="max-w-[80px] sm:max-w-[120px] truncate hidden sm:block">{user.displayName || user.email}</span>
               </button>
               {showMenu && (
                 <div
