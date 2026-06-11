@@ -3,6 +3,38 @@ import { useAuth } from '../contexts/AuthContext'
 
 const STATUS_COLORS = { live: 'var(--green)', final: 'var(--muted)', scheduled: 'var(--yellow)' }
 
+function formatML(ml) {
+  if (ml === null || ml === undefined) return null
+  return ml > 0 ? `+${ml}` : `${ml}`
+}
+
+function OddsRow({ odds, awayAbbr, homeAbbr }) {
+  if (!odds) return null
+  const { spread, overUnder, homeML, awayML, homeFavored } = odds
+
+  const spreadStr = spread !== null
+    ? `${homeFavored ? homeAbbr : awayAbbr} ${spread > 0 ? '+' : ''}${spread}`
+    : null
+  const ouStr = overUnder !== null ? `O/U ${overUnder}` : null
+  const mlStr = (homeML !== null && awayML !== null)
+    ? `${awayAbbr} ${formatML(awayML)} / ${homeAbbr} ${formatML(homeML)}`
+    : null
+
+  const parts = [spreadStr, ouStr, mlStr].filter(Boolean)
+  if (!parts.length) return null
+
+  return (
+    <div
+      className="px-3 pb-2.5 pt-0"
+      style={{ borderTop: '1px solid var(--border)' }}
+    >
+      <p className="text-[10px] leading-snug mt-2" style={{ color: 'var(--muted)' }}>
+        {parts.join(' · ')}
+      </p>
+    </div>
+  )
+}
+
 function formatGameTime(startTime) {
   const gameDate = new Date(startTime)
   const now = new Date()
@@ -109,6 +141,11 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
             {game.lastPlay}
           </p>
         </div>
+      )}
+
+      {/* Odds — scheduled games only */}
+      {game.status === 'scheduled' && (
+        <OddsRow odds={game.odds} awayAbbr={game.awayTeam.abbr} homeAbbr={game.homeTeam.abbr} />
       )}
     </div>
   )

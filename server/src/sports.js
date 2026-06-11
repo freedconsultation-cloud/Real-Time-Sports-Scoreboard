@@ -49,6 +49,7 @@ function normalizeGame(event, leagueKey) {
     lastPlay,
     startTime: event.date,
     venue: comp.venue?.fullName || '',
+    odds: extractOdds(comp, home, away),
     homeTeam: {
       id: home.team?.id,
       name: home.team?.displayName,
@@ -85,6 +86,29 @@ function getPeriodLabel(period, sport, status, description, detail) {
     return `${arrow} Inning ${period}`;
   }
   return `${period}`;
+}
+
+function extractOdds(comp, home, away) {
+  const o = comp.odds?.[0];
+  if (!o) return null;
+
+  const spread = o.spread ?? null;
+  const overUnder = o.overUnder ?? null;
+  const homeML = o.homeTeamOdds?.moneyLine ?? null;
+  const awayML = o.awayTeamOdds?.moneyLine ?? null;
+
+  if (spread === null && overUnder === null && homeML === null) return null;
+
+  // Determine which team is favored (negative spread = home favorite)
+  const homeFavored = spread !== null ? spread < 0 : null;
+
+  return {
+    spread,
+    overUnder,
+    homeML,
+    awayML,
+    homeFavored,
+  };
 }
 
 function extractLeaders(comp) {
