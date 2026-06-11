@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useFavorites } from '../contexts/FavoritesContext'
 import { useAuth } from '../contexts/AuthContext'
+import TeamModal from './TeamModal'
 
 const STATUS_COLORS = { live: 'var(--green)', final: 'var(--muted)', scheduled: 'var(--yellow)' }
 
@@ -46,18 +48,28 @@ function formatGameTime(startTime) {
     ' · ' + gameDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
-function TeamRow({ team, isWinner, showLogo = true }) {
+function TeamRow({ team, isWinner, onTeamClick }) {
   return (
     <div className="flex items-center gap-2.5">
-      {showLogo && team.logo && (
-        <img src={team.logo} alt={team.abbr} className="w-8 h-8 object-contain shrink-0" />
-      )}
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-semibold truncate ${isWinner ? '' : 'opacity-70'}`} style={{ color: 'var(--fg)' }}>
-          {team.abbr}
-        </p>
-        <p className="text-[11px] truncate" style={{ color: 'var(--muted)' }}>{team.record}</p>
-      </div>
+      <button
+        className="flex items-center gap-2.5 flex-1 min-w-0 text-left group"
+        onClick={onTeamClick}
+        title={`View ${team.abbr} profile`}
+      >
+        {team.logo && (
+          <img
+            src={team.logo}
+            alt={team.abbr}
+            className="w-8 h-8 object-contain shrink-0 transition-transform group-hover:scale-110"
+          />
+        )}
+        <div className="min-w-0">
+          <p className={`text-sm font-semibold truncate group-hover:underline ${isWinner ? '' : 'opacity-70'}`} style={{ color: 'var(--fg)' }}>
+            {team.abbr}
+          </p>
+          <p className="text-[11px] truncate" style={{ color: 'var(--muted)' }}>{team.record}</p>
+        </div>
+      </button>
       <span className={`text-xl font-black tabular-nums ${isWinner ? '' : 'opacity-60'}`} style={{ color: 'var(--fg)' }}>
         {team.score}
       </span>
@@ -68,6 +80,7 @@ function TeamRow({ team, isWinner, showLogo = true }) {
 export default function GameCard({ game, onClick, onAuthRequired }) {
   const { user } = useAuth()
   const { isFavorite, toggle } = useFavorites()
+  const [teamModal, setTeamModal] = useState(null) // { id, name }
 
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
@@ -85,7 +98,13 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
     toggle(favId)
   }
 
+  function openTeam(e, team) {
+    e.stopPropagation()
+    setTeamModal({ id: team.id, name: team.abbr })
+  }
+
   return (
+    <>
     <div
       className="rounded-xl overflow-hidden cursor-pointer transition-all hover:translate-y-[-2px]"
       style={{
@@ -118,7 +137,9 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
       {/* Teams */}
       <div className="px-3 py-3 space-y-2">
         <div className="flex items-center gap-1">
-          <div className="flex-1"><TeamRow team={game.awayTeam} isWinner={awayWins} /></div>
+          <div className="flex-1">
+            <TeamRow team={game.awayTeam} isWinner={awayWins} onTeamClick={(e) => openTeam(e, game.awayTeam)} />
+          </div>
           <button
             className="ml-1 text-base opacity-40 hover:opacity-100 transition-opacity shrink-0"
             style={{ color: awayIsFav ? 'var(--accent)' : 'var(--muted)' }}
@@ -129,7 +150,9 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
           </button>
         </div>
         <div className="flex items-center gap-1">
-          <div className="flex-1"><TeamRow team={game.homeTeam} isWinner={homeWins} /></div>
+          <div className="flex-1">
+            <TeamRow team={game.homeTeam} isWinner={homeWins} onTeamClick={(e) => openTeam(e, game.homeTeam)} />
+          </div>
           <button
             className="ml-1 text-base opacity-40 hover:opacity-100 transition-opacity shrink-0"
             style={{ color: homeIsFav ? 'var(--accent)' : 'var(--muted)' }}
@@ -155,5 +178,15 @@ export default function GameCard({ game, onClick, onAuthRequired }) {
         <OddsRow odds={game.odds} awayAbbr={game.awayTeam.abbr} homeAbbr={game.homeTeam.abbr} />
       )}
     </div>
+
+    {teamModal && (
+      <TeamModal
+        league={game.league}
+        teamId={teamModal.id}
+        teamName={teamModal.name}
+        onClose={() => setTeamModal(null)}
+      />
+    )}
+    </>
   )
 }

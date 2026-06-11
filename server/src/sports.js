@@ -163,6 +163,71 @@ export async function fetchTeams(leagueKey) {
   }
 }
 
+export async function fetchTeamProfile(leagueKey, teamId) {
+  const meta = LEAGUES[leagueKey];
+  if (!meta) return null;
+  const base = `${ESPN_BASE}/${meta.sport}/${meta.league}`;
+
+  const [teamRes, schedRes] = await Promise.all([
+    fetch(`${base}/teams/${teamId}`, { signal: AbortSignal.timeout(8000) }),
+    fetch(`${base}/teams/${teamId}/schedule`, { signal: AbortSignal.timeout(8000) }),
+  ]);
+
+  const teamData = teamRes.ok ? await teamRes.json() : null;
+  const schedData = schedRes.ok ? await schedRes.json() : null;
+
+  const t = teamData?.team;
+  if (!t) return null;
+
+  const record = t.record?.items?.[0]?.summary || '';
+
+  const events = (schedData?.events || []).map((event) => {
+    const comp = event.competitions?.[0];
+    if (!comp) return null;
+    const us = comp.competitors?.find((c) => c.team?.id === String(teamId));
+    const them = comp.competitors?.find((c) => c.team?.id !== String(teamId));
+    if (!us || !them) return null;
+    const completed = !!comp.status?.type?.completed;
+    const broadcasts = (comp.geoBroadcasts || [])
+      .map((b) => b.media?.shortName).filter(Boolean);
+    return {
+      id: event.id,
+      date: event.date,
+      isHome: us.homeAway === 'home',
+      completed,
+      winner: completed ? !!us.winner : null,
+      score: completed ? us.score : null,
+      oppScore: completed ? them.score : null,
+      opponent: {
+        id: them.team?.id,
+        name: them.team?.displayName,
+        abbr: them.team?.abbreviation,
+        logo: them.team?.logos?.[0]?.href || them.team?.logo || null,
+      },
+      broadcasts: [...new Set(broadcasts)],
+    };
+  }).filter(Boolean);
+
+  const past = events.filter((g) => g.completed).reverse();
+  const upcoming = events.filter((g) => !g.completed);
+
+  const last10 = past.slice(0, 10);
+  const l10W = last10.filter((g) => g.winner).length;
+  const l10L = last10.filter((g) => !g.winner).length;
+
+  return {
+    id: t.id,
+    name: t.displayName,
+    abbr: t.abbreviation,
+    logo: t.logos?.[0]?.href || null,
+    color: t.color ? `#${t.color}` : null,
+    record,
+    last10: `${l10W}-${l10L}`,
+    pastGames: past.slice(0, 10),
+    upcomingGames: upcoming.slice(0, 8),
+  };
+}
+
 export async function fetchGames(leagueKey) {
   const meta = LEAGUES[leagueKey];
   if (!meta) return [];

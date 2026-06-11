@@ -5,7 +5,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fetchGames, fetchTeams, detectEvents, LEAGUES } from './sports.js';
+import { fetchGames, fetchTeams, fetchTeamProfile, detectEvents, LEAGUES } from './sports.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -46,6 +46,18 @@ app.get('/api/games/:league', async (req, res) => {
   const games = await fetchGames(league);
   gameCache[league] = games;
   res.json(games);
+});
+
+app.get('/api/team/:league/:teamId', async (req, res) => {
+  const { league, teamId } = req.params;
+  if (!LEAGUES[league]) return res.status(404).json({ error: 'Unknown league' });
+  try {
+    const profile = await fetchTeamProfile(league, teamId);
+    if (!profile) return res.status(404).json({ error: 'Team not found' });
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/games/:league/:gameId/commentary', (req, res) => {
